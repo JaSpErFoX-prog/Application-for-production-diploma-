@@ -8,3 +8,13 @@ D:\ВСЕ ПРАКТИКИ\Технологическая практика 516\m
 D:\ВСЕ ПРАКТИКИ\Технологическая практика 516\myProject\NetworkStoress\NetworkStoress\obj\Debug\NetworkStoress.csproj.CoreCompileInputs.cache
 D:\ВСЕ ПРАКТИКИ\Технологическая практика 516\myProject\NetworkStoress\NetworkStoress\obj\Debug\NetworkStoress.exe
 D:\ВСЕ ПРАКТИКИ\Технологическая практика 516\myProject\NetworkStoress\NetworkStoress\obj\Debug\NetworkStoress.pdb
+D:\praktika\myProject\NetworkStoress\NetworkStoress\obj\Debug\NetworkStoress.csproj.AssemblyReference.cache
+D:\praktika\myProject\NetworkStoress\NetworkStoress\obj\Debug\NetworkStoress.Form1.resources
+D:\praktika\myProject\NetworkStoress\NetworkStoress\obj\Debug\NetworkStoress.Properties.Resources.resources
+D:\praktika\myProject\NetworkStoress\NetworkStoress\obj\Debug\NetworkStoress.csproj.GenerateResource.cache
+D:\praktika\myProject\NetworkStoress\NetworkStoress\obj\Debug\NetworkStoress.csproj.CoreCompileInputs.cache
+D:\praktika\myProject\NetworkStoress\NetworkStoress\obj\Debug\NetworkStoress.exe
+D:\praktika\myProject\NetworkStoress\NetworkStoress\obj\Debug\NetworkStoress.pdb
+D:\praktika\myProject\NetworkStoress\NetworkStoress\bin\Debug\NetworkStoress.exe.config
+D:\praktika\myProject\NetworkStoress\NetworkStoress\bin\Debug\NetworkStoress.exe
+D:\praktika\myProject\NetworkStoress\NetworkStoress\bin\Debug\NetworkStoress.pdb
