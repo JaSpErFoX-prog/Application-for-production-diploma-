@@ -117,31 +117,31 @@ namespace NetworkStoress
             // 
             // button7
             // 
-            this.button7.Location = new System.Drawing.Point(36, 154);
+            this.button7.Location = new System.Drawing.Point(36, 190);
             this.button7.Name = "button7";
-            this.button7.Size = new System.Drawing.Size(107, 34);
+            this.button7.Size = new System.Drawing.Size(107, 45);
             this.button7.TabIndex = 8;
-            this.button7.Text = "Выборка 4";
+            this.button7.Text = "Магазины Кузнецова";
             this.button7.UseVisualStyleBackColor = true;
             this.button7.Click += new System.EventHandler(this.button7_Click);
             // 
             // button6
             // 
-            this.button6.Location = new System.Drawing.Point(36, 114);
+            this.button6.Location = new System.Drawing.Point(36, 137);
             this.button6.Name = "button6";
-            this.button6.Size = new System.Drawing.Size(107, 34);
+            this.button6.Size = new System.Drawing.Size(107, 47);
             this.button6.TabIndex = 8;
-            this.button6.Text = "Выборка 3";
+            this.button6.Text = "Капитал извне";
             this.button6.UseVisualStyleBackColor = true;
             this.button6.Click += new System.EventHandler(this.button6_Click);
             // 
             // button5
             // 
-            this.button5.Location = new System.Drawing.Point(36, 74);
+            this.button5.Location = new System.Drawing.Point(36, 87);
             this.button5.Name = "button5";
-            this.button5.Size = new System.Drawing.Size(107, 34);
+            this.button5.Size = new System.Drawing.Size(107, 47);
             this.button5.TabIndex = 7;
-            this.button5.Text = "Выборка 2";
+            this.button5.Text = "До 18 лет";
             this.button5.UseVisualStyleBackColor = true;
             this.button5.Click += new System.EventHandler(this.button5_Click);
             // 
@@ -149,9 +149,9 @@ namespace NetworkStoress
             // 
             this.button4.Location = new System.Drawing.Point(36, 34);
             this.button4.Name = "button4";
-            this.button4.Size = new System.Drawing.Size(107, 34);
+            this.button4.Size = new System.Drawing.Size(107, 47);
             this.button4.TabIndex = 6;
-            this.button4.Text = "Выборка 1";
+            this.button4.Text = "Молодой владелец";
             this.button4.UseVisualStyleBackColor = true;
             this.button4.Click += new System.EventHandler(this.button4_Click);
             // 
