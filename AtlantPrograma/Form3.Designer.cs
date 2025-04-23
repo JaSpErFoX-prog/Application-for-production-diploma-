@@ -30,7 +30,6 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form3));
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
-            this.оСебеToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.выйтиИзСистемыToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.label1 = new System.Windows.Forms.Label();
@@ -45,21 +44,12 @@
             // 
             this.menuStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.оСебеToolStripMenuItem,
             this.выйтиИзСистемыToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.Size = new System.Drawing.Size(1107, 31);
             this.menuStrip1.TabIndex = 0;
             this.menuStrip1.Text = "menuStrip1";
-            // 
-            // оСебеToolStripMenuItem
-            // 
-            this.оСебеToolStripMenuItem.Font = new System.Drawing.Font("Segoe UI", 10.2F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.оСебеToolStripMenuItem.Name = "оСебеToolStripMenuItem";
-            this.оСебеToolStripMenuItem.Size = new System.Drawing.Size(78, 27);
-            this.оСебеToolStripMenuItem.Text = "О себе";
-            this.оСебеToolStripMenuItem.Click += new System.EventHandler(this.оСебеToolStripMenuItem_Click_1);
             // 
             // выйтиИзСистемыToolStripMenuItem
             // 
@@ -135,7 +125,6 @@
         #endregion
 
         private System.Windows.Forms.MenuStrip menuStrip1;
-        private System.Windows.Forms.ToolStripMenuItem оСебеToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem выйтиИзСистемыToolStripMenuItem;
         private System.Windows.Forms.PictureBox pictureBox1;
         private System.Windows.Forms.Label label1;

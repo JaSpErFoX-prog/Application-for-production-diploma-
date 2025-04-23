@@ -12,12 +12,6 @@ namespace AtlantPrograma
             InitializeComponent();
             currentUser = username; // Получаем имя пользователя из Form1
         }
-       
-        private void оСебеToolStripMenuItem_Click_1(object sender, EventArgs e)
-        {
-            MessageBox.Show($"Вы вошли как: {currentUser}", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-
         private void выйтиИзСистемыToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var result = MessageBox.Show("Вы действительно хотите выйти из системы?", "Выход", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
