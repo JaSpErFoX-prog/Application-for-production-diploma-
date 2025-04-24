@@ -101,12 +101,7 @@ namespace AtlantPrograma
                     MessageBox.Show($"Ошибка при загрузке пользователей: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
-        }
-        private void оСебеToolStripMenuItem_Click_1(object sender, EventArgs e)
-        {
-            MessageBox.Show($"Вы вошли как: {currentUser} (Администратор)", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-
+        }     
         private void выйтиИзСистемыToolStripMenuItem_Click_1(object sender, EventArgs e)
         {
             var confirmation = MessageBox.Show("Вы уверены, что хотите выйти без сохранения изменений?", "Предупреждение", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);

@@ -37,12 +37,14 @@
             this.button2 = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
-            this.отправитьВсемToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.ПоместитьToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.восстановитьПомеченноеToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.восстановитьВсёToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.очиститьКорзинуToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.ПрочитанноеToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.действияСпочтойToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.отправитьВсемToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.поместитьВКорзинуToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.пометитьКакПрочитанноеToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.действияСКорзинойToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.восстановитьПомеченноеToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.восстановитьВсёToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.очиститьКорзинуToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.button6 = new System.Windows.Forms.Button();
@@ -129,6 +131,7 @@
             this.button2.TabIndex = 1;
             this.button2.Text = "Черновики";
             this.button2.UseVisualStyleBackColor = true;
+            this.button2.Click += new System.EventHandler(this.button2_Click);
             // 
             // button1
             // 
@@ -146,58 +149,74 @@
             this.menuStrip1.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
             this.menuStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.отправитьВсемToolStripMenuItem,
-            this.ПоместитьToolStripMenuItem,
-            this.восстановитьПомеченноеToolStripMenuItem,
-            this.восстановитьВсёToolStripMenuItem,
-            this.очиститьКорзинуToolStripMenuItem,
-            this.ПрочитанноеToolStripMenuItem1});
+            this.действияСпочтойToolStripMenuItem,
+            this.действияСКорзинойToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.Size = new System.Drawing.Size(1090, 28);
             this.menuStrip1.TabIndex = 1;
             this.menuStrip1.Text = "menuStrip1";
             // 
-            // отправитьВсемToolStripMenuItem
+            // действияСпочтойToolStripMenuItem
             // 
-            this.отправитьВсемToolStripMenuItem.Name = "отправитьВсемToolStripMenuItem";
-            this.отправитьВсемToolStripMenuItem.Size = new System.Drawing.Size(135, 24);
-            this.отправитьВсемToolStripMenuItem.Text = "Отправить всем";
+            this.действияСпочтойToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.отправитьВсемToolStripMenuItem1,
+            this.поместитьВКорзинуToolStripMenuItem,
+            this.пометитьКакПрочитанноеToolStripMenuItem1});
+            this.действияСпочтойToolStripMenuItem.Name = "действияСпочтойToolStripMenuItem";
+            this.действияСпочтойToolStripMenuItem.Size = new System.Drawing.Size(153, 24);
+            this.действияСпочтойToolStripMenuItem.Text = "Действия с почтой";
             // 
-            // ПоместитьToolStripMenuItem
+            // отправитьВсемToolStripMenuItem1
             // 
-            this.ПоместитьToolStripMenuItem.Name = "ПоместитьToolStripMenuItem";
-            this.ПоместитьToolStripMenuItem.Size = new System.Drawing.Size(171, 24);
-            this.ПоместитьToolStripMenuItem.Text = "Поместить в корзину";
-            this.ПоместитьToolStripMenuItem.Click += new System.EventHandler(this.ПоместитьToolStripMenuItem_Click);
+            this.отправитьВсемToolStripMenuItem1.Name = "отправитьВсемToolStripMenuItem1";
+            this.отправитьВсемToolStripMenuItem1.Size = new System.Drawing.Size(283, 26);
+            this.отправитьВсемToolStripMenuItem1.Text = "Отправить всем";
             // 
-            // восстановитьПомеченноеToolStripMenuItem
+            // поместитьВКорзинуToolStripMenuItem
             // 
-            this.восстановитьПомеченноеToolStripMenuItem.Name = "восстановитьПомеченноеToolStripMenuItem";
-            this.восстановитьПомеченноеToolStripMenuItem.Size = new System.Drawing.Size(210, 24);
-            this.восстановитьПомеченноеToolStripMenuItem.Text = "Восстановить помеченное";
-            this.восстановитьПомеченноеToolStripMenuItem.Click += new System.EventHandler(this.восстановитьПомеченноеToolStripMenuItem_Click);
+            this.поместитьВКорзинуToolStripMenuItem.Name = "поместитьВКорзинуToolStripMenuItem";
+            this.поместитьВКорзинуToolStripMenuItem.Size = new System.Drawing.Size(283, 26);
+            this.поместитьВКорзинуToolStripMenuItem.Text = "Поместить в корзину";
+            this.поместитьВКорзинуToolStripMenuItem.Click += new System.EventHandler(this.поместитьВКорзинуToolStripMenuItem_Click);
             // 
-            // восстановитьВсёToolStripMenuItem
+            // пометитьКакПрочитанноеToolStripMenuItem1
             // 
-            this.восстановитьВсёToolStripMenuItem.Name = "восстановитьВсёToolStripMenuItem";
-            this.восстановитьВсёToolStripMenuItem.Size = new System.Drawing.Size(145, 24);
-            this.восстановитьВсёToolStripMenuItem.Text = "Восстановить всё";
-            this.восстановитьВсёToolStripMenuItem.Click += new System.EventHandler(this.восстановитьВсёToolStripMenuItem_Click);
+            this.пометитьКакПрочитанноеToolStripMenuItem1.Name = "пометитьКакПрочитанноеToolStripMenuItem1";
+            this.пометитьКакПрочитанноеToolStripMenuItem1.Size = new System.Drawing.Size(283, 26);
+            this.пометитьКакПрочитанноеToolStripMenuItem1.Text = "Пометить как прочитанное";
+            this.пометитьКакПрочитанноеToolStripMenuItem1.Click += new System.EventHandler(this.пометитьКакПрочитанноеToolStripMenuItem1_Click);
             // 
-            // очиститьКорзинуToolStripMenuItem
+            // действияСКорзинойToolStripMenuItem
             // 
-            this.очиститьКорзинуToolStripMenuItem.Name = "очиститьКорзинуToolStripMenuItem";
-            this.очиститьКорзинуToolStripMenuItem.Size = new System.Drawing.Size(148, 24);
-            this.очиститьКорзинуToolStripMenuItem.Text = "Очистить корзину";
-            this.очиститьКорзинуToolStripMenuItem.Click += new System.EventHandler(this.очиститьКорзинуToolStripMenuItem_Click);
+            this.действияСКорзинойToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.восстановитьПомеченноеToolStripMenuItem1,
+            this.восстановитьВсёToolStripMenuItem1,
+            this.очиститьКорзинуToolStripMenuItem1});
+            this.действияСКорзинойToolStripMenuItem.Name = "действияСКорзинойToolStripMenuItem";
+            this.действияСКорзинойToolStripMenuItem.Size = new System.Drawing.Size(171, 24);
+            this.действияСКорзинойToolStripMenuItem.Text = "Действия с корзиной";
             // 
-            // ПрочитанноеToolStripMenuItem1
+            // восстановитьПомеченноеToolStripMenuItem1
             // 
-            this.ПрочитанноеToolStripMenuItem1.Name = "ПрочитанноеToolStripMenuItem1";
-            this.ПрочитанноеToolStripMenuItem1.Size = new System.Drawing.Size(214, 24);
-            this.ПрочитанноеToolStripMenuItem1.Text = "Пометить как прочитанное";
-            this.ПрочитанноеToolStripMenuItem1.Click += new System.EventHandler(this.ПрочитанноеToolStripMenuItem1_Click);
+            this.восстановитьПомеченноеToolStripMenuItem1.Name = "восстановитьПомеченноеToolStripMenuItem1";
+            this.восстановитьПомеченноеToolStripMenuItem1.Size = new System.Drawing.Size(279, 26);
+            this.восстановитьПомеченноеToolStripMenuItem1.Text = "Восстановить помеченное";
+            this.восстановитьПомеченноеToolStripMenuItem1.Click += new System.EventHandler(this.восстановитьПомеченноеToolStripMenuItem1_Click);
+            // 
+            // восстановитьВсёToolStripMenuItem1
+            // 
+            this.восстановитьВсёToolStripMenuItem1.Name = "восстановитьВсёToolStripMenuItem1";
+            this.восстановитьВсёToolStripMenuItem1.Size = new System.Drawing.Size(279, 26);
+            this.восстановитьВсёToolStripMenuItem1.Text = "Восстановить всё";
+            this.восстановитьВсёToolStripMenuItem1.Click += new System.EventHandler(this.восстановитьВсёToolStripMenuItem1_Click);
+            // 
+            // очиститьКорзинуToolStripMenuItem1
+            // 
+            this.очиститьКорзинуToolStripMenuItem1.Name = "очиститьКорзинуToolStripMenuItem1";
+            this.очиститьКорзинуToolStripMenuItem1.Size = new System.Drawing.Size(279, 26);
+            this.очиститьКорзинуToolStripMenuItem1.Text = "Очистить корзину";
+            this.очиститьКорзинуToolStripMenuItem1.Click += new System.EventHandler(this.очиститьКорзинуToolStripMenuItem1_Click);
             // 
             // dataGridView1
             // 
@@ -210,6 +229,7 @@
             this.dataGridView1.RowTemplate.Height = 24;
             this.dataGridView1.Size = new System.Drawing.Size(907, 421);
             this.dataGridView1.TabIndex = 2;
+            this.dataGridView1.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView1_CellContentClick_1);
             // 
             // textBox1
             // 
@@ -349,8 +369,7 @@
         private System.Windows.Forms.Button button3;
         private System.Windows.Forms.Button button5;
         private System.Windows.Forms.DataGridView dataGridView1;
-        private System.Windows.Forms.ToolStripMenuItem отправитьВсемToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem ПоместитьToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem действияСпочтойToolStripMenuItem;
         private System.Windows.Forms.TextBox textBox1;
         private System.Windows.Forms.Button button6;
         private System.Windows.Forms.Label label1;
@@ -363,10 +382,13 @@
         private System.Windows.Forms.ContextMenuStrip contextMenuStrip2;
         private System.Windows.Forms.ToolStripMenuItem ответитьToolStripMenuItem1;
         private System.Windows.Forms.ToolStripMenuItem поместитьВКорзинуToolStripMenuItem1;
-        private System.Windows.Forms.ToolStripMenuItem восстановитьПомеченноеToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem восстановитьВсёToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem очиститьКорзинуToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem ПрочитанноеToolStripMenuItem1;
         private System.Windows.Forms.Button button8;
+        private System.Windows.Forms.ToolStripMenuItem отправитьВсемToolStripMenuItem1;
+        private System.Windows.Forms.ToolStripMenuItem поместитьВКорзинуToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem пометитьКакПрочитанноеToolStripMenuItem1;
+        private System.Windows.Forms.ToolStripMenuItem действияСКорзинойToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem восстановитьПомеченноеToolStripMenuItem1;
+        private System.Windows.Forms.ToolStripMenuItem восстановитьВсёToolStripMenuItem1;
+        private System.Windows.Forms.ToolStripMenuItem очиститьКорзинуToolStripMenuItem1;
     }
 }

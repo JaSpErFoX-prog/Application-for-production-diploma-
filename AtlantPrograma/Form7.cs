@@ -18,55 +18,134 @@ namespace AtlantPrograma
         {
             InitializeComponent();
             senderUsername = sender;
-        }
-        private bool isReadOnlyMode = false;
-        private void button2_Click(object sender, EventArgs e)
-        {
-            if (isReadOnlyMode)
-            {
-                DialogResult result = MessageBox.Show(
-                    "Вы точно хотите выйти из письма?",
-                    "Подтверждение",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question);
-
-                if (result == DialogResult.Yes)
-                {
-                    this.Close();
-                }
-            }
-            else
-            {
-                DialogResult result = MessageBox.Show(
-                    "Вы точно хотите выйти из отправки письма?",
-                    "Подтверждение",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Warning);
-
-                if (result == DialogResult.Yes)
-                {
-                    this.Close();
-                }
-            }
-        }
-        private List<string> allUsernames = new List<string>();
-        private void Form7_Load(object sender, EventArgs e)
-        {
-            // Загружаем список пользователей (кому отправить)
-            LoadRecipients();
-
-            // Добавляем приоритеты для сотрудников
-            comboBox2.Items.AddRange(new string[] { "Не срочно", "Обычное сообщение", "Срочно!" });
-            comboBox2.SelectedIndex = 1; // по умолчанию "Обычное сообщение"
             comboBox1.Text = "Поиск...";
             comboBox1.ForeColor = Color.Gray;
+            LoadRecipients();
+            comboBox2.Items.AddRange(new string[] { "Не срочно", "Обычное сообщение", "Срочно!" });
+            comboBox2.SelectedIndex = 1; // по умолчанию "Обычное сообщение"
             comboBox1.Enter += comboBox1_Enter;
             comboBox1.Leave += comboBox1_Leave;
             comboBox1.TextChanged += comboBox1_TextChanged;
         }
+
+        private bool isReadOnlyMode = false;
+        private void button2_Click(object sender, EventArgs e)
+        {
+            if (!isReadOnlyMode)
+            {
+                bool hasRecipient = comboBox1.Text != "Поиск..." && !string.IsNullOrWhiteSpace(comboBox1.Text);
+                bool hasSubject = !string.IsNullOrWhiteSpace(textBox1.Text);
+                bool hasBody = !string.IsNullOrWhiteSpace(richTextBox1.Text);
+
+                // Если нет получателя, но есть тема/текст — предлагать сохранить
+                if (!hasRecipient && (hasSubject || hasBody))
+                {
+                    DialogResult saveDraft = MessageBox.Show(
+                        "Вы не указали получателя. Сохранить как черновик?",
+                        "Сохранение черновика",
+                        MessageBoxButtons.YesNoCancel,
+                        MessageBoxIcon.Question);
+
+                    if (saveDraft == DialogResult.Yes)
+                    {
+                        SaveDraft();
+
+                        MessageBox.Show("Черновик сохранён успешно!", "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        // Найдём открытую форму Form6 и вызовем у неё метод
+                        Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+                        form6?.LoadDraftMessages();
+
+                        this.Close();
+                    }
+                    else if (saveDraft == DialogResult.No)
+                    {
+                        this.Close();
+                    }
+                }
+                else if (hasRecipient && hasSubject && hasBody)
+                {
+                    DialogResult saveDraft = MessageBox.Show(
+                        "Вы не отправили письмо. Сохранить как черновик?",
+                        "Сохранение черновика",
+                        MessageBoxButtons.YesNoCancel,
+                        MessageBoxIcon.Question);
+
+                    if (saveDraft == DialogResult.Yes)
+                    {
+                        SaveDraft();
+
+                        MessageBox.Show("Черновик сохранён успешно!", "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+                        form6?.LoadDraftMessages();
+
+                        this.Close();
+                    }
+                    else if (saveDraft == DialogResult.No)
+                    {
+                        this.Close();
+                    }
+                }
+                else
+                {
+                    this.Close();
+                }
+            }
+        }
+        private void SaveDraft()
+        {
+            string recipient = comboBox1.SelectedItem?.ToString() ?? "";
+            string subject = textBox1.Text.Trim();
+            string body = richTextBox1.Text.Trim();
+            string priority = comboBox2.SelectedItem?.ToString() ?? "Обычное сообщение";
+            string dateCreated = DateTime.Now.ToString("dd.MM.yyyy");
+            string timeCreated = DateTime.Now.ToString("HH:mm:ss");
+
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                {
+                    conn.Open();
+                    string query = "INSERT INTO drafts (sender, recipient, subject, body, priority, date_created, time_created) " +
+                                   "VALUES (@sender, @recipient, @subject, @body, @priority, @date, @time)";
+                    MySqlCommand cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@sender", senderUsername);
+                    cmd.Parameters.AddWithValue("@recipient", recipient);
+                    cmd.Parameters.AddWithValue("@subject", subject);
+                    cmd.Parameters.AddWithValue("@body", body);
+                    cmd.Parameters.AddWithValue("@priority", priority);
+                    cmd.Parameters.AddWithValue("@date", dateCreated);
+                    cmd.Parameters.AddWithValue("@time", timeCreated);
+
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при сохранении черновика: " + ex.Message);
+            }
+        }
+
+        private List<string> allUsernames = new List<string>();
+        private void Form7_Load(object sender, EventArgs e)
+        {
+            // Загружаем список пользователей (кому отправить)
+            //LoadRecipients();
+
+            // Добавляем приоритеты для сотрудников
+            //comboBox2.Items.AddRange(new string[] { "Не срочно", "Обычное сообщение", "Срочно!" });
+            //comboBox2.SelectedIndex = 1; // по умолчанию "Обычное сообщение"
+            //comboBox1.Text = "Поиск...";
+            //comboBox1.ForeColor = Color.Gray;
+            //comboBox1.Enter += comboBox1_Enter;
+            //comboBox1.Leave += comboBox1_Leave;
+            //comboBox1.TextChanged += comboBox1_TextChanged;
+        }
         private void comboBox1_Enter(object sender, EventArgs e)
         {
-            if (comboBox1.Text == "Поиск...")
+            // Убираем подсказку только если она действительно стоит
+            if (comboBox1.Text == "Поиск..." && comboBox1.ForeColor == Color.Gray)
             {
                 comboBox1.Text = "";
                 comboBox1.ForeColor = Color.Black;
@@ -75,10 +154,16 @@ namespace AtlantPrograma
 
         private void comboBox1_Leave(object sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(comboBox1.Text))
+            // Если поле пустое и не выбрано значение из списка — показываем подсказку
+            if (string.IsNullOrWhiteSpace(comboBox1.Text) || comboBox1.SelectedItem == null)
             {
                 comboBox1.Text = "Поиск...";
                 comboBox1.ForeColor = Color.Gray;
+            }
+            else
+            {
+                // Обеспечиваем, что при наличии текста он чёрный
+                comboBox1.ForeColor = Color.Black;
             }
         }
         private void comboBox1_TextChanged(object sender, EventArgs e)
@@ -190,6 +275,75 @@ namespace AtlantPrograma
             isReadOnlyMode = true;
 
             this.Text = "ПРОСМОТР СООБЩЕНИЯ";
+        }
+        public void LoadDraftForEditing(int draftId)
+        {
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                {
+                    conn.Open();
+                    string query = @"
+SELECT recipient, subject, priority, body
+FROM drafts
+WHERE id = @draftId";
+
+                    MySqlCommand cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@draftId", draftId);
+
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            string recipient = reader.IsDBNull(reader.GetOrdinal("recipient")) ? "" : reader.GetString("recipient");
+                            string subject = reader.IsDBNull(reader.GetOrdinal("subject")) ? "" : reader.GetString("subject");
+                            string priority = reader.IsDBNull(reader.GetOrdinal("priority")) ? "" : reader.GetString("priority");
+                            string body = reader.IsDBNull(reader.GetOrdinal("body")) ? "" : reader.GetString("body");
+
+                            // Заполняем поля черновика
+                            // Проверяем, существует ли получатель в comboBox1
+                            if (comboBox1.Items.Contains(recipient))
+                            {
+                                comboBox1.SelectedItem = recipient;  // Устанавливаем получателя
+                            }
+                            else
+                            {
+                                comboBox1.Text = recipient;  // Если получатель не найден в списке, ставим как текст
+                            }
+                            comboBox1.ForeColor = Color.Black; // <-- сброс цвета на чёрный
+                            textBox1.Text = subject;              // Тема
+                            richTextBox1.Text = body;             // Текст письма
+
+                            // Для приоритета
+                            if (!string.IsNullOrEmpty(priority))
+                            {
+                                // Проверим, существует ли этот приоритет в comboBox2
+                                if (comboBox2.Items.Contains(priority))
+                                {
+                                    comboBox2.SelectedItem = priority;
+                                }
+                                else
+                                {
+                                    // Если приоритет не найден, установим по умолчанию
+                                    comboBox2.SelectedItem = "Обычное сообщение";
+                                }
+                            }
+                            else
+                            {
+                                comboBox2.SelectedItem = null; // Если приоритет пустой
+                            }
+                        }
+                        else
+                        {
+                            MessageBox.Show("Черновик не найден");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при загрузке черновика: " + ex.Message);
+            }
         }
     }
 }

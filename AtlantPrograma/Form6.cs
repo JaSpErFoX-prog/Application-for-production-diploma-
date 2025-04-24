@@ -35,12 +35,10 @@ namespace AtlantPrograma
             label2.Font = new Font(label2.Font, FontStyle.Bold);
 
             ShowNotificationCount(); // загрузка уведомлений
-                                     //dataGridView1.MouseDown += dataGridView1_MouseDown;
-            восстановитьПомеченноеToolStripMenuItem.Enabled = false;
-            восстановитьВсёToolStripMenuItem.Enabled = false;
-            очиститьКорзинуToolStripMenuItem.Enabled = false;
-            ПоместитьToolStripMenuItem.Enabled = false;
-            ПрочитанноеToolStripMenuItem1.Enabled = false;
+            //dataGridView1.MouseDown += dataGridView1_MouseDown;
+            действияСКорзинойToolStripMenuItem.Enabled = false;
+            пометитьКакПрочитанноеToolStripMenuItem1.Enabled = false;
+            поместитьВКорзинуToolStripMenuItem.Enabled = false;
         }
         private void button4_Click(object sender, EventArgs e)
         {
@@ -52,15 +50,12 @@ namespace AtlantPrograma
         {
             currentView = "inbox";
             LoadIncomingMessages();
-            восстановитьПомеченноеToolStripMenuItem.Enabled = false;
-            восстановитьВсёToolStripMenuItem.Enabled = false;
-            очиститьКорзинуToolStripMenuItem.Enabled = false;
-            ПоместитьToolStripMenuItem.Enabled = true;
-            отправитьВсемToolStripMenuItem.Enabled = true;
-            ПрочитанноеToolStripMenuItem1.Enabled = true;
+            действияСКорзинойToolStripMenuItem.Enabled = false;
+            действияСпочтойToolStripMenuItem.Enabled = true;
+            поместитьВКорзинуToolStripMenuItem.Enabled = true;
+            пометитьКакПрочитанноеToolStripMenuItem1.Enabled = true;
+            отправитьВсемToolStripMenuItem1.Enabled = true;
         }
-
-
         private void ShowNotificationCount()
         {
             using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
@@ -230,13 +225,11 @@ namespace AtlantPrograma
         {
             currentView = "read";
             // Отключаем пункты меню, которые не относятся к прочитанным
-            восстановитьПомеченноеToolStripMenuItem.Enabled = false;
-            восстановитьВсёToolStripMenuItem.Enabled = false;
-            очиститьКорзинуToolStripMenuItem.Enabled = false;
-            ПоместитьToolStripMenuItem.Enabled = true;
-            отправитьВсемToolStripMenuItem.Enabled = false;
-            ПрочитанноеToolStripMenuItem1.Enabled = false;
-
+            действияСпочтойToolStripMenuItem.Enabled = true;
+            действияСКорзинойToolStripMenuItem.Enabled = false;
+            поместитьВКорзинуToolStripMenuItem.Enabled = true;
+            пометитьКакПрочитанноеToolStripMenuItem1.Enabled = false;
+            отправитьВсемToolStripMenuItem1.Enabled = false;
             // Обновляем обработчики мыши
             dataGridView1.MouseDown -= dataGridView1_MouseDown;
             dataGridView1.MouseDown -= dataGridView1_MouseDown1;
@@ -437,7 +430,6 @@ namespace AtlantPrograma
             }
         }
 
-
         private void dataGridView1_MouseDown(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Right)
@@ -470,64 +462,7 @@ namespace AtlantPrograma
                     contextMenuStrip2.Hide();
                 }
             }
-        }
-       
-        private void ПоместитьToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            
-            dataGridView1.EndEdit();
-            dataGridView1.CommitEdit(DataGridViewDataErrorContexts.Commit);
-            List<int> idsToDelete = new List<int>();
-
-            foreach (DataGridViewRow row in dataGridView1.Rows)
-            {
-                if (!row.IsNewRow && row.Cells[0].Value != null && Convert.ToBoolean(row.Cells[0].Value))
-                {
-                    if (row.Cells["message_id"].Value != null)
-                    {
-                        idsToDelete.Add(Convert.ToInt32(row.Cells["message_id"].Value));
-                    }
-                }
-            }
-
-            if (idsToDelete.Count == 0)
-            {
-                MessageBox.Show("Выберите хотя бы одно сообщение для перемещения в корзину", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            DialogResult result = MessageBox.Show("Вы уверены, что хотите переместить выбранные сообщения в корзину?", "Предупреждение", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (result != DialogResult.Yes)
-                return;
-
-            using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
-            {
-                conn.Open();
-
-                string query = "UPDATE messages SET is_deleted = 1 WHERE id = @id AND recipient = @recipient";
-
-                foreach (int id in idsToDelete)
-                {
-                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@id", id);
-                        cmd.Parameters.AddWithValue("@recipient", currentUser);
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-            }
-
-            MessageBox.Show("Выбранные сообщения были перемещены в корзину!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-            ShowNotificationCount(); // Обновляем количество новых
-
-            //Загружаем актуальные данные в зависимости от текущего режима
-            if (currentView == "inbox")
-                LoadIncomingMessages();
-            else if (currentView == "read")
-                button7_Click(null, null); // имитируем клик по кнопке "Прочитанные"
-        }
-
+        }     
         private void button8_Click(object sender, EventArgs e)
         {
             DialogResult result = MessageBox.Show("Вы действительно хотите выйти из почты?", "Выход", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
@@ -539,13 +474,11 @@ namespace AtlantPrograma
 
         private void button5_Click(object sender, EventArgs e)
         {
-            восстановитьПомеченноеToolStripMenuItem.Enabled = true;
-            восстановитьВсёToolStripMenuItem.Enabled = true;
-            очиститьКорзинуToolStripMenuItem.Enabled = true;
-            ПоместитьToolStripMenuItem.Enabled = false;
-            отправитьВсемToolStripMenuItem.Enabled = false;
-            ПрочитанноеToolStripMenuItem1.Enabled = false;
-
+            действияСпочтойToolStripMenuItem.Enabled = false;
+            действияСКорзинойToolStripMenuItem.Enabled = true;
+            восстановитьВсёToolStripMenuItem1.Enabled = true;
+            восстановитьПомеченноеToolStripMenuItem1.Enabled = true;
+            очиститьКорзинуToolStripMenuItem1.Enabled = true;
             //dataGridView1.MouseDown -= dataGridView1_MouseDown;
             //dataGridView1.MouseDown -= dataGridView1_MouseDown1;
             dataGridView1.Columns.Clear();
@@ -633,8 +566,144 @@ namespace AtlantPrograma
                 }
             }
         }
+        private void button3_Click(object sender, EventArgs e)
+        {
+            действияСКорзинойToolStripMenuItem.Enabled = false;
+            действияСпочтойToolStripMenuItem.Enabled = false;
 
-        private void ПрочитанноеToolStripMenuItem1_Click(object sender, EventArgs e)
+            dataGridView1.Columns.Clear();
+            dataGridView1.Rows.Clear();
+
+            // Скрытая колонка с ID сообщений
+            DataGridViewTextBoxColumn idColumn = new DataGridViewTextBoxColumn();
+            idColumn.Name = "message_id";
+            idColumn.Visible = false;
+            dataGridView1.Columns.Add(idColumn);
+
+            dataGridView1.Columns.Add("recipient", "Получатель");
+            dataGridView1.Columns.Add("department", "Отдел");
+            dataGridView1.Columns.Add("phone", "Телефон");
+            dataGridView1.Columns.Add("subject", "Тема");
+            dataGridView1.Columns.Add("priority", "Приоритет");
+            dataGridView1.Columns.Add("date_sent", "Дата");
+            dataGridView1.Columns.Add("time_sent", "Время");
+
+            using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            {
+                conn.Open();
+
+                string query = @"
+            SELECT 
+                m.id,
+                m.recipient, 
+                m.subject, 
+                m.priority, 
+                m.date_sent, 
+                m.time_sent,
+                d.name AS department,
+                d.phones AS phone
+            FROM messages m
+            LEFT JOIN users u ON m.recipient = u.username
+            LEFT JOIN user_details ud ON u.id = ud.user_id
+            LEFT JOIN departments d ON ud.department_id = d.id
+            WHERE m.sender = @sender AND m.is_read = 0 AND m.is_deleted = 0
+            ORDER BY m.id DESC";
+
+                MySqlCommand cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@sender", currentUser);
+
+                MySqlDataReader reader = cmd.ExecuteReader();
+
+                bool hasMessages = false;
+
+                while (reader.Read())
+                {
+                    hasMessages = true;
+
+                    int messageId = reader.GetInt32("id");
+                    string recipient = reader.GetString("recipient");
+                    string subject = reader.GetString("subject");
+                    string priority = reader.GetString("priority");
+                    string date = reader.GetString("date_sent");
+                    string time = reader.GetTimeSpan("time_sent").ToString(@"hh\:mm\:ss");
+                    string department = reader.IsDBNull(reader.GetOrdinal("department")) ? "-" : reader.GetString("department");
+                    string phone = reader.IsDBNull(reader.GetOrdinal("phone")) ? "-" : reader.GetString("phone");
+
+                    int rowIndex = dataGridView1.Rows.Add(messageId, recipient, department, phone, subject, priority, date, time);
+
+                    // Раскраска приоритета
+                    DataGridViewCell priorityCell = dataGridView1.Rows[rowIndex].Cells["priority"];
+                    switch (priority)
+                    {
+                        case "Не срочно": priorityCell.Style.BackColor = Color.Green; break;
+                        case "Обычное сообщение": priorityCell.Style.BackColor = Color.Yellow; break;
+                        case "Срочно!": priorityCell.Style.BackColor = Color.Red; break;
+                    }
+                }
+
+                if (!hasMessages)
+                {
+                    MessageBox.Show("Нет отправленных сообщений", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+        }
+
+        private void поместитьВКорзинуToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            dataGridView1.EndEdit();
+            dataGridView1.CommitEdit(DataGridViewDataErrorContexts.Commit);
+            List<int> idsToDelete = new List<int>();
+
+            foreach (DataGridViewRow row in dataGridView1.Rows)
+            {
+                if (!row.IsNewRow && row.Cells[0].Value != null && Convert.ToBoolean(row.Cells[0].Value))
+                {
+                    if (row.Cells["message_id"].Value != null)
+                    {
+                        idsToDelete.Add(Convert.ToInt32(row.Cells["message_id"].Value));
+                    }
+                }
+            }
+
+            if (idsToDelete.Count == 0)
+            {
+                MessageBox.Show("Выберите хотя бы одно сообщение для перемещения в корзину", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            DialogResult result = MessageBox.Show("Вы уверены, что хотите переместить выбранные сообщения в корзину?", "Предупреждение", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (result != DialogResult.Yes)
+                return;
+
+            using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            {
+                conn.Open();
+
+                string query = "UPDATE messages SET is_deleted = 1 WHERE id = @id AND recipient = @recipient";
+
+                foreach (int id in idsToDelete)
+                {
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", id);
+                        cmd.Parameters.AddWithValue("@recipient", currentUser);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
+
+            MessageBox.Show("Выбранные сообщения были перемещены в корзину!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            ShowNotificationCount(); // Обновляем количество новых
+
+            //Загружаем актуальные данные в зависимости от текущего режима
+            if (currentView == "inbox")
+                LoadIncomingMessages();
+            else if (currentView == "read")
+                button7_Click(null, null); // имитируем клик по кнопке "Прочитанные"
+        }
+
+        private void пометитьКакПрочитанноеToolStripMenuItem1_Click(object sender, EventArgs e)
         {
             // Коммитим изменения из чекбоксов
             dataGridView1.EndEdit();
@@ -692,7 +761,7 @@ namespace AtlantPrograma
                 LoadIncomingMessages();
         }
 
-        private void восстановитьПомеченноеToolStripMenuItem_Click(object sender, EventArgs e)
+        private void восстановитьПомеченноеToolStripMenuItem1_Click(object sender, EventArgs e)
         {
             // Чтобы сохранить последнее изменение чекбокса
             dataGridView1.EndEdit();
@@ -738,13 +807,13 @@ namespace AtlantPrograma
             }
 
             MessageBox.Show("Выбранные сообщения восстановлены!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            
+
             // Обновим корзину
             button5_Click(null, null);
             ShowNotificationCount();
         }
 
-        private void восстановитьВсёToolStripMenuItem_Click(object sender, EventArgs e)
+        private void восстановитьВсёToolStripMenuItem1_Click(object sender, EventArgs e)
         {
             if (dataGridView1.Rows.Count == 0)
             {
@@ -780,7 +849,7 @@ namespace AtlantPrograma
             ShowNotificationCount();
         }
 
-        private void очиститьКорзинуToolStripMenuItem_Click(object sender, EventArgs e)
+        private void очиститьКорзинуToolStripMenuItem1_Click(object sender, EventArgs e)
         {
             if (dataGridView1.Rows.Count == 0)
             {
@@ -865,88 +934,243 @@ namespace AtlantPrograma
             button5_Click(null, null);
         }
 
-        private void button3_Click(object sender, EventArgs e)
+        private void button2_Click(object sender, EventArgs e)
         {
-            восстановитьПомеченноеToolStripMenuItem.Enabled = false;
-            восстановитьВсёToolStripMenuItem.Enabled = false;
-            очиститьКорзинуToolStripMenuItem.Enabled = false;
-            ПоместитьToolStripMenuItem.Enabled = false;
-            ПрочитанноеToolStripMenuItem1.Enabled = false;
-            отправитьВсемToolStripMenuItem.Enabled = false;
+            действияСпочтойToolStripMenuItem.Enabled = false;
+            действияСКорзинойToolStripMenuItem.Enabled = false;
+            dataGridView1.MouseDown -= dataGridView1_MouseDown;
+            dataGridView1.MouseDown -= dataGridView1_MouseDown1;
+            //dataGridView1.MouseDown += dataGridView1_MouseDown1;
+
+            // Очистка таблицы
             dataGridView1.Columns.Clear();
             dataGridView1.Rows.Clear();
 
-            // Скрытая колонка с ID сообщений
+            // Добавляем колонку с чекбоксом
+            DataGridViewCheckBoxColumn checkboxColumn = new DataGridViewCheckBoxColumn();
+            checkboxColumn.HeaderText = "";
+            checkboxColumn.Width = 30;
+            dataGridView1.Columns.Add(checkboxColumn);
+
+            // Добавляем скрытую колонку для ID черновика
             DataGridViewTextBoxColumn idColumn = new DataGridViewTextBoxColumn();
-            idColumn.Name = "message_id";
+            idColumn.Name = "draft_id";
             idColumn.Visible = false;
             dataGridView1.Columns.Add(idColumn);
 
+            // Основные колонки
             dataGridView1.Columns.Add("recipient", "Получатель");
             dataGridView1.Columns.Add("department", "Отдел");
             dataGridView1.Columns.Add("phone", "Телефон");
             dataGridView1.Columns.Add("subject", "Тема");
             dataGridView1.Columns.Add("priority", "Приоритет");
-            dataGridView1.Columns.Add("date_sent", "Дата");
-            dataGridView1.Columns.Add("time_sent", "Время");
+            dataGridView1.Columns.Add("date_created", "Дата");
+            dataGridView1.Columns.Add("time_created", "Время");
 
-            using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            // Колонка с кнопками "Открыть"
+            DataGridViewButtonColumn openButtonColumn = new DataGridViewButtonColumn();
+            openButtonColumn.Name = "open_button";
+            openButtonColumn.HeaderText = "Открыть";
+            openButtonColumn.Text = "Открыть";
+            openButtonColumn.UseColumnTextForButtonValue = true;
+            dataGridView1.Columns.Add(openButtonColumn);
+
+            try
             {
-                conn.Open();
-
-                string query = @"
-            SELECT 
-                m.id,
-                m.recipient, 
-                m.subject, 
-                m.priority, 
-                m.date_sent, 
-                m.time_sent,
-                d.name AS department,
-                d.phones AS phone
-            FROM messages m
-            LEFT JOIN users u ON m.recipient = u.username
-            LEFT JOIN user_details ud ON u.id = ud.user_id
-            LEFT JOIN departments d ON ud.department_id = d.id
-            WHERE m.sender = @sender AND m.is_read = 0 AND m.is_deleted = 0
-            ORDER BY m.id DESC";
-
-                MySqlCommand cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@sender", currentUser);
-
-                MySqlDataReader reader = cmd.ExecuteReader();
-
-                bool hasMessages = false;
-
-                while (reader.Read())
+                using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
                 {
-                    hasMessages = true;
+                    conn.Open();
+                    string query = @"
+        SELECT 
+            d.id,
+            d.recipient,
+            dep.name AS recipient_department,
+            ud.phone AS recipient_phone,
+            d.subject,
+            d.priority,
+            d.date_created,
+            d.time_created
+        FROM drafts d
+        LEFT JOIN users u ON d.recipient = u.username
+        LEFT JOIN user_details ud ON u.id = ud.user_id
+        LEFT JOIN departments dep ON ud.department_id = dep.id
+        WHERE d.sender = @sender
+        ORDER BY d.date_created DESC, d.time_created DESC;";
 
-                    int messageId = reader.GetInt32("id");
-                    string recipient = reader.GetString("recipient");
-                    string subject = reader.GetString("subject");
-                    string priority = reader.GetString("priority");
-                    string date = reader.GetString("date_sent");
-                    string time = reader.GetTimeSpan("time_sent").ToString(@"hh\:mm\:ss");
-                    string department = reader.IsDBNull(reader.GetOrdinal("department")) ? "-" : reader.GetString("department");
-                    string phone = reader.IsDBNull(reader.GetOrdinal("phone")) ? "-" : reader.GetString("phone");
+                    MySqlCommand cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@sender", currentUser);
 
-                    int rowIndex = dataGridView1.Rows.Add(messageId, recipient, department, phone, subject, priority, date, time);
-
-                    // Раскраска приоритета
-                    DataGridViewCell priorityCell = dataGridView1.Rows[rowIndex].Cells["priority"];
-                    switch (priority)
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
                     {
-                        case "Не срочно": priorityCell.Style.BackColor = Color.Green; break;
-                        case "Обычное сообщение": priorityCell.Style.BackColor = Color.Yellow; break;
-                        case "Срочно!": priorityCell.Style.BackColor = Color.Red; break;
+                        if (!reader.HasRows)
+                        {
+                            MessageBox.Show("У вас нет сохранённых черновиков", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            return;
+                        }
+
+                        while (reader.Read())
+                        {
+                            int draftId = reader.GetInt32("id");
+                            string recipient = reader.IsDBNull(reader.GetOrdinal("recipient")) ? "-" : reader.GetString("recipient");
+                            string subject = reader.IsDBNull(reader.GetOrdinal("subject")) ? "-" : reader.GetString("subject");
+                            string priority = reader.IsDBNull(reader.GetOrdinal("priority")) ? "-" : reader.GetString("priority");
+                            string date = reader.IsDBNull(reader.GetOrdinal("date_created")) ? "-" : reader.GetString("date_created");
+                            string time = reader.IsDBNull(reader.GetOrdinal("time_created"))
+                                ? "-"
+                                : ((TimeSpan)reader["time_created"]).ToString(@"hh\:mm\:ss");
+
+                            string department = reader.IsDBNull(reader.GetOrdinal("recipient_department")) ? "-" : reader.GetString("recipient_department");
+                            string phone = reader.IsDBNull(reader.GetOrdinal("recipient_phone")) ? "-" : reader.GetString("recipient_phone");
+
+                            int rowIndex = dataGridView1.Rows.Add(false, draftId, recipient, department, phone, subject, priority, date, time);
+
+                            // Раскрашиваем приоритет
+                            DataGridViewCell priorityCell = dataGridView1.Rows[rowIndex].Cells["priority"];
+                            switch (priority)
+                            {
+                                case "Не срочно":
+                                    priorityCell.Style.BackColor = Color.Green;
+                                    break;
+                                case "Обычное сообщение":
+                                    priorityCell.Style.BackColor = Color.Yellow;
+                                    break;
+                                case "Срочно!":
+                                    priorityCell.Style.BackColor = Color.Red;
+                                    break;
+                            }
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при загрузке черновиков: " + ex.Message);
+            }
+        }
+        private void dataGridView1_CellContentClick_1(object sender, DataGridViewCellEventArgs e)
+        {
+            // Проверяем, что клик был по кнопке "Открыть"
+            if (e.ColumnIndex == dataGridView1.Columns["open_button"].Index && e.RowIndex >= 0)
+            {
+                // Получаем ID черновика
+                int draftId = (int)dataGridView1.Rows[e.RowIndex].Cells["draft_id"].Value;
 
-                if (!hasMessages)
+                // Открываем Form7 и передаем только ID
+                Form7 form7 = new Form7(currentUser);
+                form7.LoadDraftForEditing(draftId);
+                form7.Show();
+            }
+        }
+
+        public void LoadDraftMessages()
+        {
+            dataGridView1.MouseDown -= dataGridView1_MouseDown;
+            dataGridView1.MouseDown -= dataGridView1_MouseDown1;
+            //dataGridView1.MouseDown += dataGridView1_MouseDown1;
+
+            // Очистка таблицы
+            dataGridView1.Columns.Clear();
+            dataGridView1.Rows.Clear();
+
+            // Добавляем колонку с чекбоксом
+            DataGridViewCheckBoxColumn checkboxColumn = new DataGridViewCheckBoxColumn();
+            checkboxColumn.HeaderText = "";
+            checkboxColumn.Width = 30;
+            dataGridView1.Columns.Add(checkboxColumn);
+
+            // Добавляем скрытую колонку для ID черновика
+            DataGridViewTextBoxColumn idColumn = new DataGridViewTextBoxColumn();
+            idColumn.Name = "draft_id";
+            idColumn.Visible = false;
+            dataGridView1.Columns.Add(idColumn);
+
+            // Основные колонки
+            dataGridView1.Columns.Add("recipient", "Получатель");
+            dataGridView1.Columns.Add("department", "Отдел");
+            dataGridView1.Columns.Add("phone", "Телефон");
+            dataGridView1.Columns.Add("subject", "Тема");
+            dataGridView1.Columns.Add("priority", "Приоритет");
+            dataGridView1.Columns.Add("date_created", "Дата");
+            dataGridView1.Columns.Add("time_created", "Время");
+
+            // Колонка с кнопками "Открыть"
+            DataGridViewButtonColumn openButtonColumn = new DataGridViewButtonColumn();
+            openButtonColumn.Name = "open_button";
+            openButtonColumn.HeaderText = "Открыть";
+            openButtonColumn.Text = "Открыть";
+            openButtonColumn.UseColumnTextForButtonValue = true;
+            dataGridView1.Columns.Add(openButtonColumn);
+
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
                 {
-                    MessageBox.Show("Нет отправленных сообщений", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    conn.Open();
+                    string query = @"
+        SELECT 
+            d.id,
+            d.recipient,
+            dep.name AS recipient_department,
+            ud.phone AS recipient_phone,
+            d.subject,
+            d.priority,
+            d.date_created,
+            d.time_created
+        FROM drafts d
+        LEFT JOIN users u ON d.recipient = u.username
+        LEFT JOIN user_details ud ON u.id = ud.user_id
+        LEFT JOIN departments dep ON ud.department_id = dep.id
+        WHERE d.sender = @sender
+        ORDER BY d.date_created DESC, d.time_created DESC;";
+
+                    MySqlCommand cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@sender", currentUser);
+
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (!reader.HasRows)
+                        {
+                            MessageBox.Show("У вас нет сохранённых черновиков", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            return;
+                        }
+
+                        while (reader.Read())
+                        {
+                            int draftId = reader.GetInt32("id");
+                            string recipient = reader.IsDBNull(reader.GetOrdinal("recipient")) ? "-" : reader.GetString("recipient");
+                            string subject = reader.IsDBNull(reader.GetOrdinal("subject")) ? "-" : reader.GetString("subject");
+                            string priority = reader.IsDBNull(reader.GetOrdinal("priority")) ? "-" : reader.GetString("priority");
+                            string date = reader.IsDBNull(reader.GetOrdinal("date_created")) ? "-" : reader.GetString("date_created");
+                            string time = reader.IsDBNull(reader.GetOrdinal("time_created"))
+                                ? "-"
+                                : ((TimeSpan)reader["time_created"]).ToString(@"hh\:mm\:ss");
+
+                            string department = reader.IsDBNull(reader.GetOrdinal("recipient_department")) ? "-" : reader.GetString("recipient_department");
+                            string phone = reader.IsDBNull(reader.GetOrdinal("recipient_phone")) ? "-" : reader.GetString("recipient_phone");
+
+                            int rowIndex = dataGridView1.Rows.Add(false, draftId, recipient, department, phone, subject, priority, date, time);
+
+                            // Раскрашиваем приоритет
+                            DataGridViewCell priorityCell = dataGridView1.Rows[rowIndex].Cells["priority"];
+                            switch (priority)
+                            {
+                                case "Не срочно":
+                                    priorityCell.Style.BackColor = Color.Green;
+                                    break;
+                                case "Обычное сообщение":
+                                    priorityCell.Style.BackColor = Color.Yellow;
+                                    break;
+                                case "Срочно!":
+                                    priorityCell.Style.BackColor = Color.Red;
+                                    break;
+                            }
+                        }
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при загрузке черновиков: " + ex.Message);
             }
         }
     }
