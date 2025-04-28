@@ -45,6 +45,9 @@
             this.восстановитьПомеченноеToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.восстановитьВсёToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.очиститьКорзинуToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.действияСЧерновикамиToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.восстановитьУдалённоеToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.удалитьЧерновикиToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.button6 = new System.Windows.Forms.Button();
@@ -58,6 +61,7 @@
             this.ответитьToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.поместитьВКорзинуToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.button8 = new System.Windows.Forms.Button();
+            this.восстановитьПрочитанноеToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.panel1.SuspendLayout();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
@@ -150,7 +154,8 @@
             this.menuStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.действияСпочтойToolStripMenuItem,
-            this.действияСКорзинойToolStripMenuItem});
+            this.действияСКорзинойToolStripMenuItem,
+            this.действияСЧерновикамиToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.Size = new System.Drawing.Size(1090, 28);
@@ -162,7 +167,8 @@
             this.действияСпочтойToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.отправитьВсемToolStripMenuItem1,
             this.поместитьВКорзинуToolStripMenuItem,
-            this.пометитьКакПрочитанноеToolStripMenuItem1});
+            this.пометитьКакПрочитанноеToolStripMenuItem1,
+            this.восстановитьПрочитанноеToolStripMenuItem});
             this.действияСпочтойToolStripMenuItem.Name = "действияСпочтойToolStripMenuItem";
             this.действияСпочтойToolStripMenuItem.Size = new System.Drawing.Size(153, 24);
             this.действияСпочтойToolStripMenuItem.Text = "Действия с почтой";
@@ -217,6 +223,29 @@
             this.очиститьКорзинуToolStripMenuItem1.Size = new System.Drawing.Size(279, 26);
             this.очиститьКорзинуToolStripMenuItem1.Text = "Очистить корзину";
             this.очиститьКорзинуToolStripMenuItem1.Click += new System.EventHandler(this.очиститьКорзинуToolStripMenuItem1_Click);
+            // 
+            // действияСЧерновикамиToolStripMenuItem
+            // 
+            this.действияСЧерновикамиToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.восстановитьУдалённоеToolStripMenuItem,
+            this.удалитьЧерновикиToolStripMenuItem});
+            this.действияСЧерновикамиToolStripMenuItem.Name = "действияСЧерновикамиToolStripMenuItem";
+            this.действияСЧерновикамиToolStripMenuItem.Size = new System.Drawing.Size(198, 24);
+            this.действияСЧерновикамиToolStripMenuItem.Text = "Действия с черновиками";
+            // 
+            // восстановитьУдалённоеToolStripMenuItem
+            // 
+            this.восстановитьУдалённоеToolStripMenuItem.Name = "восстановитьУдалённоеToolStripMenuItem";
+            this.восстановитьУдалённоеToolStripMenuItem.Size = new System.Drawing.Size(265, 26);
+            this.восстановитьУдалённоеToolStripMenuItem.Text = "Восстановить удалённое";
+            this.восстановитьУдалённоеToolStripMenuItem.Click += new System.EventHandler(this.восстановитьУдалённоеToolStripMenuItem_Click);
+            // 
+            // удалитьЧерновикиToolStripMenuItem
+            // 
+            this.удалитьЧерновикиToolStripMenuItem.Name = "удалитьЧерновикиToolStripMenuItem";
+            this.удалитьЧерновикиToolStripMenuItem.Size = new System.Drawing.Size(265, 26);
+            this.удалитьЧерновикиToolStripMenuItem.Text = "Удалить черновики";
+            this.удалитьЧерновикиToolStripMenuItem.Click += new System.EventHandler(this.удалитьЧерновикиToolStripMenuItem_Click);
             // 
             // dataGridView1
             // 
@@ -283,20 +312,21 @@
             // прочитатьToolStripMenuItem
             // 
             this.прочитатьToolStripMenuItem.Name = "прочитатьToolStripMenuItem";
-            this.прочитатьToolStripMenuItem.Size = new System.Drawing.Size(152, 24);
+            this.прочитатьToolStripMenuItem.Size = new System.Drawing.Size(210, 24);
             this.прочитатьToolStripMenuItem.Text = "Прочитать";
             this.прочитатьToolStripMenuItem.Click += new System.EventHandler(this.прочитатьToolStripMenuItem_Click);
             // 
             // ответитьToolStripMenuItem
             // 
             this.ответитьToolStripMenuItem.Name = "ответитьToolStripMenuItem";
-            this.ответитьToolStripMenuItem.Size = new System.Drawing.Size(152, 24);
+            this.ответитьToolStripMenuItem.Size = new System.Drawing.Size(210, 24);
             this.ответитьToolStripMenuItem.Text = "Ответить";
+            this.ответитьToolStripMenuItem.Click += new System.EventHandler(this.ответитьToolStripMenuItem_Click);
             // 
             // пометитьКакПрочитанноеToolStripMenuItem
             // 
             this.пометитьКакПрочитанноеToolStripMenuItem.Name = "пометитьКакПрочитанноеToolStripMenuItem";
-            this.пометитьКакПрочитанноеToolStripMenuItem.Size = new System.Drawing.Size(152, 24);
+            this.пометитьКакПрочитанноеToolStripMenuItem.Size = new System.Drawing.Size(210, 24);
             this.пометитьКакПрочитанноеToolStripMenuItem.Text = "Переслать";
             // 
             // contextMenuStrip2
@@ -330,6 +360,12 @@
             this.button8.Text = "Выход";
             this.button8.UseVisualStyleBackColor = true;
             this.button8.Click += new System.EventHandler(this.button8_Click);
+            // 
+            // восстановитьПрочитанноеToolStripMenuItem
+            // 
+            this.восстановитьПрочитанноеToolStripMenuItem.Name = "восстановитьПрочитанноеToolStripMenuItem";
+            this.восстановитьПрочитанноеToolStripMenuItem.Size = new System.Drawing.Size(284, 26);
+            this.восстановитьПрочитанноеToolStripMenuItem.Text = "Восстановить прочитанное";
             // 
             // Form6
             // 
@@ -390,5 +426,9 @@
         private System.Windows.Forms.ToolStripMenuItem восстановитьПомеченноеToolStripMenuItem1;
         private System.Windows.Forms.ToolStripMenuItem восстановитьВсёToolStripMenuItem1;
         private System.Windows.Forms.ToolStripMenuItem очиститьКорзинуToolStripMenuItem1;
+        private System.Windows.Forms.ToolStripMenuItem действияСЧерновикамиToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem восстановитьУдалённоеToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem удалитьЧерновикиToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem восстановитьПрочитанноеToolStripMenuItem;
     }
 }

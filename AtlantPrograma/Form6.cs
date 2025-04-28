@@ -39,6 +39,7 @@ namespace AtlantPrograma
             действияСКорзинойToolStripMenuItem.Enabled = false;
             пометитьКакПрочитанноеToolStripMenuItem1.Enabled = false;
             поместитьВКорзинуToolStripMenuItem.Enabled = false;
+            действияСЧерновикамиToolStripMenuItem.Enabled = false;
         }
         private void button4_Click(object sender, EventArgs e)
         {
@@ -55,8 +56,9 @@ namespace AtlantPrograma
             поместитьВКорзинуToolStripMenuItem.Enabled = true;
             пометитьКакПрочитанноеToolStripMenuItem1.Enabled = true;
             отправитьВсемToolStripMenuItem1.Enabled = true;
+            действияСЧерновикамиToolStripMenuItem.Enabled = false;
         }
-        private void ShowNotificationCount()
+        public void ShowNotificationCount()
         {
             using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
             {
@@ -80,7 +82,7 @@ namespace AtlantPrograma
             }
         }
 
-        private void LoadIncomingMessages()
+        public void LoadIncomingMessages()
         {
             // Обновляем обработчики мыши
             dataGridView1.MouseDown -= dataGridView1_MouseDown;
@@ -230,6 +232,7 @@ namespace AtlantPrograma
             поместитьВКорзинуToolStripMenuItem.Enabled = true;
             пометитьКакПрочитанноеToolStripMenuItem1.Enabled = false;
             отправитьВсемToolStripMenuItem1.Enabled = false;
+            действияСЧерновикамиToolStripMenuItem.Enabled = false;
             // Обновляем обработчики мыши
             dataGridView1.MouseDown -= dataGridView1_MouseDown;
             dataGridView1.MouseDown -= dataGridView1_MouseDown1;
@@ -474,11 +477,15 @@ namespace AtlantPrograma
 
         private void button5_Click(object sender, EventArgs e)
         {
+            dataGridView1.MouseDown -= dataGridView1_MouseDown;
+            dataGridView1.MouseDown -= dataGridView1_MouseDown1;
+
             действияСпочтойToolStripMenuItem.Enabled = false;
             действияСКорзинойToolStripMenuItem.Enabled = true;
             восстановитьВсёToolStripMenuItem1.Enabled = true;
             восстановитьПомеченноеToolStripMenuItem1.Enabled = true;
             очиститьКорзинуToolStripMenuItem1.Enabled = true;
+            действияСЧерновикамиToolStripMenuItem.Enabled = false;
             //dataGridView1.MouseDown -= dataGridView1_MouseDown;
             //dataGridView1.MouseDown -= dataGridView1_MouseDown1;
             dataGridView1.Columns.Clear();
@@ -562,14 +569,18 @@ namespace AtlantPrograma
                 }
                 else
                 {
-                    dataGridView1.MouseDown += dataGridView1_MouseDown1;
+                    //dataGridView1.MouseDown += dataGridView1_MouseDown1;
                 }
             }
         }
         private void button3_Click(object sender, EventArgs e)
         {
+            dataGridView1.MouseDown -= dataGridView1_MouseDown;
+            dataGridView1.MouseDown -= dataGridView1_MouseDown1;
+
             действияСКорзинойToolStripMenuItem.Enabled = false;
             действияСпочтойToolStripMenuItem.Enabled = false;
+            действияСЧерновикамиToolStripMenuItem.Enabled = false;
 
             dataGridView1.Columns.Clear();
             dataGridView1.Rows.Clear();
@@ -936,11 +947,14 @@ namespace AtlantPrograma
 
         private void button2_Click(object sender, EventArgs e)
         {
-            действияСпочтойToolStripMenuItem.Enabled = false;
-            действияСКорзинойToolStripMenuItem.Enabled = false;
             dataGridView1.MouseDown -= dataGridView1_MouseDown;
             dataGridView1.MouseDown -= dataGridView1_MouseDown1;
-            //dataGridView1.MouseDown += dataGridView1_MouseDown1;
+
+            действияСпочтойToolStripMenuItem.Enabled = false;
+            действияСКорзинойToolStripMenuItem.Enabled = false;
+            действияСЧерновикамиToolStripMenuItem.Enabled = true;
+            восстановитьУдалённоеToolStripMenuItem.Enabled = true;
+            удалитьЧерновикиToolStripMenuItem.Enabled = true;
 
             // Очистка таблицы
             dataGridView1.Columns.Clear();
@@ -981,21 +995,24 @@ namespace AtlantPrograma
                 {
                     conn.Open();
                     string query = @"
-        SELECT 
-            d.id,
-            d.recipient,
-            dep.name AS recipient_department,
-            ud.phone AS recipient_phone,
-            d.subject,
-            d.priority,
-            d.date_created,
-            d.time_created
-        FROM drafts d
-        LEFT JOIN users u ON d.recipient = u.username
-        LEFT JOIN user_details ud ON u.id = ud.user_id
-        LEFT JOIN departments dep ON ud.department_id = dep.id
-        WHERE d.sender = @sender
-        ORDER BY d.date_created DESC, d.time_created DESC;";
+SELECT 
+    d.id,
+    d.recipient,
+    dep.name AS recipient_department,
+    ud.phone AS recipient_phone,
+    d.subject,
+    d.priority,
+    d.date_created,
+    d.time_created
+FROM drafts d
+LEFT JOIN users u ON d.recipient = u.username
+LEFT JOIN user_details ud ON u.id = ud.user_id
+LEFT JOIN departments dep ON ud.department_id = dep.id
+WHERE 
+    d.sender = @sender 
+    AND (d.is_sent IS NULL OR d.is_sent = 0)
+    AND (d.is_deleted IS NULL OR d.is_deleted = 0)
+ORDER BY d.date_created DESC, d.time_created DESC;";
 
                     MySqlCommand cmd = new MySqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@sender", currentUser);
@@ -1004,7 +1021,7 @@ namespace AtlantPrograma
                     {
                         if (!reader.HasRows)
                         {
-                            MessageBox.Show("У вас нет сохранённых черновиков", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            MessageBox.Show("У вас нет неотправленных черновиков", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             return;
                         }
 
@@ -1066,7 +1083,9 @@ namespace AtlantPrograma
         {
             dataGridView1.MouseDown -= dataGridView1_MouseDown;
             dataGridView1.MouseDown -= dataGridView1_MouseDown1;
-            //dataGridView1.MouseDown += dataGridView1_MouseDown1;
+
+            действияСпочтойToolStripMenuItem.Enabled = false;
+            действияСКорзинойToolStripMenuItem.Enabled = false;
 
             // Очистка таблицы
             dataGridView1.Columns.Clear();
@@ -1107,21 +1126,24 @@ namespace AtlantPrograma
                 {
                     conn.Open();
                     string query = @"
-        SELECT 
-            d.id,
-            d.recipient,
-            dep.name AS recipient_department,
-            ud.phone AS recipient_phone,
-            d.subject,
-            d.priority,
-            d.date_created,
-            d.time_created
-        FROM drafts d
-        LEFT JOIN users u ON d.recipient = u.username
-        LEFT JOIN user_details ud ON u.id = ud.user_id
-        LEFT JOIN departments dep ON ud.department_id = dep.id
-        WHERE d.sender = @sender
-        ORDER BY d.date_created DESC, d.time_created DESC;";
+SELECT 
+    d.id,
+    d.recipient,
+    dep.name AS recipient_department,
+    ud.phone AS recipient_phone,
+    d.subject,
+    d.priority,
+    d.date_created,
+    d.time_created
+FROM drafts d
+LEFT JOIN users u ON d.recipient = u.username
+LEFT JOIN user_details ud ON u.id = ud.user_id
+LEFT JOIN departments dep ON ud.department_id = dep.id
+WHERE 
+    d.sender = @sender 
+    AND (d.is_sent IS NULL OR d.is_sent = 0)
+    AND (d.is_deleted IS NULL OR d.is_deleted = 0)
+ORDER BY d.date_created DESC, d.time_created DESC;";
 
                     MySqlCommand cmd = new MySqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@sender", currentUser);
@@ -1130,7 +1152,7 @@ namespace AtlantPrograma
                     {
                         if (!reader.HasRows)
                         {
-                            MessageBox.Show("У вас нет сохранённых черновиков", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            MessageBox.Show("У вас нет неотправленных черновиков", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             return;
                         }
 
@@ -1173,5 +1195,226 @@ namespace AtlantPrograma
                 MessageBox.Show("Ошибка при загрузке черновиков: " + ex.Message);
             }
         }
+
+        private void восстановитьУдалённоеToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            dataGridView1.EndEdit();
+            dataGridView1.CommitEdit(DataGridViewDataErrorContexts.Commit);
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                {
+                    conn.Open();
+
+                    // Сначала проверяем есть ли удалённые черновики
+                    string checkQuery = "SELECT COUNT(*) FROM drafts WHERE sender = @sender AND is_deleted = 1";
+                    using (MySqlCommand checkCmd = new MySqlCommand(checkQuery, conn))
+                    {
+                        checkCmd.Parameters.AddWithValue("@sender", currentUser);
+                        int deletedCount = Convert.ToInt32(checkCmd.ExecuteScalar());
+
+                        if (deletedCount == 0)
+                        {
+                            MessageBox.Show("Удалённых черновиков нет для восстановления", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            return;
+                        }
+                    }
+
+                    // Предупреждение пользователю
+                    DialogResult result = MessageBox.Show(
+                        "Вы уверены, что хотите восстановить все удалённые черновики?",
+                        "Подтверждение",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+
+                    if (result == DialogResult.Yes)
+                    {
+                        // Восстановление всех удалённых черновиков
+                        string restoreQuery = "UPDATE drafts SET is_deleted = 0 WHERE sender = @sender AND is_deleted = 1";
+                        using (MySqlCommand restoreCmd = new MySqlCommand(restoreQuery, conn))
+                        {
+                            restoreCmd.Parameters.AddWithValue("@sender", currentUser);
+                            restoreCmd.ExecuteNonQuery();
+                        }
+
+                        MessageBox.Show("Удалённые черновики успешно восстановлены!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        // Перезагрузка списка черновиков
+                        LoadDraftMessages();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при восстановлении черновиков: " + ex.Message);
+            }
+        }
+
+        private void удалитьЧерновикиToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (dataGridView1.Rows.Count == 0)
+            {
+                MessageBox.Show("Нет черновиков для удаления", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            dataGridView1.EndEdit();
+            dataGridView1.CommitEdit(DataGridViewDataErrorContexts.Commit);
+
+            List<int> selectedDraftIds = new List<int>();
+
+            // Сбор ID выбранных черновиков
+            foreach (DataGridViewRow row in dataGridView1.Rows)
+            {
+                if (Convert.ToBoolean(row.Cells[0].Value) == true) // Колонка с чекбоксами — индекс 0
+                {
+                    if (row.Cells["draft_id"].Value != null)
+                    {
+                        selectedDraftIds.Add(Convert.ToInt32(row.Cells["draft_id"].Value));
+                    }
+                }
+            }
+
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                {
+                    conn.Open();
+
+                    if (selectedDraftIds.Count > 0)
+                    {
+                        // Пользователь выбрал строки
+                        DialogResult confirm = MessageBox.Show(
+                            "Вы уверены, что хотите удалить выбранные черновики?",
+                            "Подтверждение удаления",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Warning);
+
+                        if (confirm == DialogResult.Yes)
+                        {
+                            foreach (int draftId in selectedDraftIds)
+                            {
+                                string deleteQuery = "UPDATE drafts SET is_deleted = 1 WHERE id = @id";
+                                using (MySqlCommand cmd = new MySqlCommand(deleteQuery, conn))
+                                {
+                                    cmd.Parameters.AddWithValue("@id", draftId);
+                                    cmd.ExecuteNonQuery();
+                                }
+                            }
+
+                            MessageBox.Show("Выбранные черновики успешно удалены", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            LoadDraftMessages();
+                        }
+                    }
+                    else
+                    {
+                        // Пользователь ничего не выбрал — удаляем все черновики
+                        DialogResult confirmAll = MessageBox.Show(
+                            "Вы не выбрали черновики.\nУдалить все черновики, которые сейчас отображаются? Также вы можете отметить определённые черновики для удаления",
+                            "Подтверждение удаления всех",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question);
+
+                        if (confirmAll == DialogResult.Yes)
+                        {
+                            string deleteAllQuery = @"
+UPDATE drafts
+SET is_deleted = 1
+WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
+";
+                            using (MySqlCommand cmd = new MySqlCommand(deleteAllQuery, conn))
+                            {
+                                cmd.Parameters.AddWithValue("@sender", currentUser);
+                                cmd.ExecuteNonQuery();
+                            }
+
+                            MessageBox.Show("Все черновики успешно удалены", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            LoadDraftMessages();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при удалении черновиков: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ответитьToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (dataGridView1.SelectedRows.Count > 0)
+            {
+                DataGridViewRow selectedRow = dataGridView1.SelectedRows[0];
+
+                string originalSender = selectedRow.Cells["sender"].Value.ToString();
+                string originalSubject = selectedRow.Cells["subject"].Value.ToString();
+                string originalDate = selectedRow.Cells["date_sent"].Value.ToString();
+                string originalTime = selectedRow.Cells["time_sent"].Value.ToString();
+                int messageId = Convert.ToInt32(selectedRow.Cells["message_id"].Value);
+
+                string originalBody = GetMessageBodyById(messageId); // <-- получаем текст через отдельный метод
+
+                Form7 replyForm = new Form7(currentUser); // currentUser — это тот, кто отвечает
+
+                // Устанавливаем получателя, тему и оригинальный текст
+                replyForm.SetReplyMode(
+                    recipient: originalSender,
+                    subject: originalSubject,
+                    originalBody: originalBody,
+                    originalSender: originalSender,
+                    originalDate: originalDate,
+                    originalTime: originalTime,
+                    messageId: messageId
+                );
+
+                // Помечаем оригинальное письмо как прочитанное
+                //MarkMessageAsRead(messageId);
+
+                replyForm.Show();
+            }
+        }
+        private string GetMessageBodyById(int messageId)
+        {
+            string body = "";
+
+            using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            {
+                conn.Open();
+
+                string query = "SELECT body FROM messages WHERE id = @id";
+                MySqlCommand cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", messageId);
+
+                using (MySqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        body = reader.IsDBNull(reader.GetOrdinal("body")) ? "" : reader.GetString("body");
+                    }
+                }
+            }
+
+            return body;
+        }
+
+        private void MarkMessageAsRead(int messageId)
+        {
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                {
+                    conn.Open();
+                    string query = "UPDATE messages SET is_read = 1 WHERE id = @id";
+                    MySqlCommand cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@id", messageId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при обновлении статуса письма: " + ex.Message);
+            }
+        }
+
     }
 }

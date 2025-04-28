@@ -23,9 +23,9 @@ namespace AtlantPrograma
             LoadRecipients();
             comboBox2.Items.AddRange(new string[] { "Не срочно", "Обычное сообщение", "Срочно!" });
             comboBox2.SelectedIndex = 1; // по умолчанию "Обычное сообщение"
-            comboBox1.Enter += comboBox1_Enter;
-            comboBox1.Leave += comboBox1_Leave;
-            comboBox1.TextChanged += comboBox1_TextChanged;
+            //comboBox1.Enter += comboBox1_Enter;
+            //comboBox1.Leave += comboBox1_Leave;
+            //comboBox1.TextChanged += comboBox1_TextChanged;
         }
 
         private bool isReadOnlyMode = false;
@@ -53,8 +53,8 @@ namespace AtlantPrograma
                         MessageBox.Show("Черновик сохранён успешно!", "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                         // Найдём открытую форму Form6 и вызовем у неё метод
-                        Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
-                        form6?.LoadDraftMessages();
+                        //Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+                       //form6?.LoadDraftMessages();
 
                         this.Close();
                     }
@@ -77,8 +77,8 @@ namespace AtlantPrograma
 
                         MessageBox.Show("Черновик сохранён успешно!", "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                        Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
-                        form6?.LoadDraftMessages();
+                        //Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+                        //form6?.LoadDraftMessages();
 
                         this.Close();
                     }
@@ -138,9 +138,9 @@ namespace AtlantPrograma
             //comboBox2.SelectedIndex = 1; // по умолчанию "Обычное сообщение"
             //comboBox1.Text = "Поиск...";
             //comboBox1.ForeColor = Color.Gray;
-            //comboBox1.Enter += comboBox1_Enter;
-            //comboBox1.Leave += comboBox1_Leave;
-            //comboBox1.TextChanged += comboBox1_TextChanged;
+           comboBox1.Enter += comboBox1_Enter;
+            comboBox1.Leave += comboBox1_Leave;
+            comboBox1.TextChanged += comboBox1_TextChanged;
         }
         private void comboBox1_Enter(object sender, EventArgs e)
         {
@@ -166,24 +166,35 @@ namespace AtlantPrograma
                 comboBox1.ForeColor = Color.Black;
             }
         }
+        private int previousTextLength = 0;
         private void comboBox1_TextChanged(object sender, EventArgs e)
         {
             string input = comboBox1.Text.Trim();
 
-            if (input.Length == 0 || input == "Поиск...") return;
-
-            string match = allUsernames.FirstOrDefault(u => u.StartsWith(input, StringComparison.OrdinalIgnoreCase));
-
-            if (match != null && comboBox1.Focused)
+            if (input.Length == 0 || input == "Поиск...")
             {
-                // Временно отписываемся от события, чтобы избежать зацикливания
-                comboBox1.TextChanged -= comboBox1_TextChanged;
-                int selectionStart = input.Length;
-                comboBox1.Text = match;
-                comboBox1.SelectionStart = selectionStart;
-                comboBox1.SelectionLength = match.Length - input.Length;
-                comboBox1.TextChanged += comboBox1_TextChanged;
+                previousTextLength = input.Length;
+                return;
             }
+
+            // Только если текст стал длиннее — делаем автодополнение
+            if (input.Length > previousTextLength)
+            {
+                string match = allUsernames.FirstOrDefault(u => u.StartsWith(input, StringComparison.OrdinalIgnoreCase));
+
+                if (match != null && comboBox1.Focused)
+                {
+                    // Временно отписываемся от события, чтобы избежать зацикливания
+                    comboBox1.TextChanged -= comboBox1_TextChanged;
+                    int selectionStart = input.Length;
+                    comboBox1.Text = match;
+                    comboBox1.SelectionStart = selectionStart;
+                    comboBox1.SelectionLength = match.Length - input.Length;
+                    comboBox1.TextChanged += comboBox1_TextChanged;
+                }
+            }
+
+            previousTextLength = input.Length; // Обновляем длину текста
         }
         private void LoadRecipients()
         {
@@ -216,40 +227,99 @@ namespace AtlantPrograma
                 MessageBox.Show("Ошибка при загрузке пользователей: " + ex.Message);
             }
         }
+        private int? openedDraftId = null;
+
+        private int? replyingToMessageId = null; // добавляем поле для хранения ID письма
+
+        //private bool isDraftMode = false;  // Флаг, который будет указывать, что мы работаем с черновиками
 
         private void button1_Click(object sender, EventArgs e)
         {
             if (comboBox1.SelectedItem == null || string.IsNullOrWhiteSpace(textBox1.Text) || string.IsNullOrWhiteSpace(richTextBox1.Text))
             {
-                MessageBox.Show("Пожалуйста, заполните все поля!");
+                MessageBox.Show("Пожалуйста, заполните все поля!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             string recipient = comboBox1.SelectedItem.ToString();
             string subject = textBox1.Text.Trim();
-            string body = richTextBox1.Text.Trim();
-            string priority = comboBox2.SelectedItem?.ToString() ?? "Обычный";
-            string dateSent = DateTime.Now.ToString("dd.MM.yyyy"); // формат день.месяц.год
+            string priority = comboBox2.SelectedItem?.ToString() ?? "Обычное сообщение";
+            string dateSent = DateTime.Now.ToString("dd.MM.yyyy");
             string timeSent = DateTime.Now.ToString("HH:mm:ss");
+            string body;
+
+            if (replyingToMessageId.HasValue)
+            {
+                string currentText = richTextBox1.Text.Trim();
+
+                // Проверяем, что пользователь написал новый текст (не включая старую переписку)
+                string newAnswer = currentText.Replace(originalText.Trim(), "").Trim();
+
+                // Если новый текст пустой, показываем предупреждение
+                if (string.IsNullOrWhiteSpace(newAnswer))
+                {
+                    MessageBox.Show("Пожалуйста, введите текст ответа перед отправкой!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Собираем новое тело письма: новый ответ + старая переписка
+                body = newAnswer + "\n\n" + originalText.Trim();
+            }
+            else
+            {
+                // Если это не ответ, а новое сообщение
+                body = richTextBox1.Text.Trim();
+            }
 
             try
             {
                 using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
                 {
                     conn.Open();
+
                     string query = "INSERT INTO messages (sender, recipient, subject, body, priority, date_sent, time_sent) " +
                                    "VALUES (@sender, @recipient, @subject, @body, @priority, @date, @time)";
-                    MySqlCommand cmd = new MySqlCommand(query, conn);
-                    cmd.Parameters.AddWithValue("@sender", senderUsername);
-                    cmd.Parameters.AddWithValue("@recipient", recipient);
-                    cmd.Parameters.AddWithValue("@subject", subject);
-                    cmd.Parameters.AddWithValue("@body", body);
-                    cmd.Parameters.AddWithValue("@priority", priority);
-                    cmd.Parameters.AddWithValue("@date", dateSent);
-                    cmd.Parameters.AddWithValue("@time", timeSent);
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@sender", senderUsername);
+                        cmd.Parameters.AddWithValue("@recipient", recipient);
+                        cmd.Parameters.AddWithValue("@subject", subject);
+                        cmd.Parameters.AddWithValue("@body", body);
+                        cmd.Parameters.AddWithValue("@priority", priority);
+                        cmd.Parameters.AddWithValue("@date", dateSent);
+                        cmd.Parameters.AddWithValue("@time", timeSent);
 
-                    cmd.ExecuteNonQuery();
-                    MessageBox.Show("Письмо успешно отправлено!");
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    if (replyingToMessageId.HasValue)
+                    {
+                        string updateQuery = "UPDATE messages SET is_read = 1 WHERE id = @id";
+                        using (MySqlCommand updateCmd = new MySqlCommand(updateQuery, conn))
+                        {
+                            updateCmd.Parameters.AddWithValue("@id", replyingToMessageId.Value);
+                            updateCmd.ExecuteNonQuery();
+                        }
+                    }
+
+                    if (openedDraftId.HasValue)
+                    {
+                        string updateDraftQuery = "UPDATE drafts SET is_sent = 1 WHERE id = @id";
+                        using (MySqlCommand updateCmd = new MySqlCommand(updateDraftQuery, conn))
+                        {
+                            updateCmd.Parameters.AddWithValue("@id", openedDraftId.Value);
+                            updateCmd.ExecuteNonQuery();
+                        }
+                        Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+                        form6?.LoadDraftMessages();
+                    }
+
+                    MessageBox.Show("Письмо успешно отправлено!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    Form6 form6Notif = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+                    form6Notif?.ShowNotificationCount();
+                    form6Notif?.LoadIncomingMessages();
+
                     this.Close();
                 }
             }
@@ -278,6 +348,8 @@ namespace AtlantPrograma
         }
         public void LoadDraftForEditing(int draftId)
         {
+            //isDraftMode = true;
+            this.openedDraftId = draftId;
             try
             {
                 using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
@@ -304,13 +376,22 @@ WHERE id = @draftId";
                             // Проверяем, существует ли получатель в comboBox1
                             if (comboBox1.Items.Contains(recipient))
                             {
-                                comboBox1.SelectedItem = recipient;  // Устанавливаем получателя
+                                comboBox1.SelectedItem = recipient;
+                                comboBox1.ForeColor = Color.Black;// Устанавливаем получателя
+                            }                           
+                            else if (comboBox1.Text=="Поиск...")
+                            {
+                                comboBox1.ForeColor = Color.Gray;
+                                //comboBox1.Enter += comboBox1_Enter;
+                                //comboBox1.Leave += comboBox1_Leave;
+                                //comboBox1.TextChanged += comboBox1_TextChanged;
                             }
                             else
                             {
-                                comboBox1.Text = recipient;  // Если получатель не найден в списке, ставим как текст
+                                comboBox1.Text = recipient;
+                                //comboBox1.ForeColor = Color.Black;// Если получатель не найден в списке, ставим как текст
                             }
-                            comboBox1.ForeColor = Color.Black; // <-- сброс цвета на чёрный
+                            //comboBox1.ForeColor = Color.Black; // <-- сброс цвета на чёрный
                             textBox1.Text = subject;              // Тема
                             richTextBox1.Text = body;             // Текст письма
 
@@ -335,7 +416,7 @@ WHERE id = @draftId";
                         }
                         else
                         {
-                            MessageBox.Show("Черновик не найден");
+                            MessageBox.Show("Черновик не найден", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                     }
                 }
@@ -344,6 +425,41 @@ WHERE id = @draftId";
             {
                 MessageBox.Show("Ошибка при загрузке черновика: " + ex.Message);
             }
+        }
+
+        string originalText; // сделаем это полем класса, чтобы доступно было другим методам
+        public void SetReplyMode(string recipient, string subject, string originalBody, string originalSender, string originalDate, string originalTime, int messageId)
+        {
+            replyingToMessageId = messageId; // сохраняем ID оригинального сообщения
+
+            if (comboBox1.Items.Contains(recipient))
+            {
+                comboBox1.SelectedItem = recipient;
+                comboBox1.ForeColor = Color.Black;
+            }
+            else
+            {
+                comboBox1.Text = recipient;
+            }
+
+            textBox1.Text = subject;
+
+            // Формируем оригинальный текст письма с дополнительным переводом строки
+            originalText =
+                "--------------------------------------\n" +
+                $"Отправитель: {originalSender}\n" +
+                $"Дата: {originalDate} Время: {originalTime}\n" +
+                $"Тема: {subject}\n" +
+                "Текст:\n" +
+                originalBody +
+                "\n--------------------------------------\n\n";
+
+            // Вставляем историю сообщений сверху
+            richTextBox1.Text = originalText + richTextBox1.Text;
+
+            // Ставим курсор после последней линии истории, перед новым ответом
+            richTextBox1.SelectionStart = richTextBox1.Text.Length;
+            richTextBox1.ScrollToCaret();
         }
     }
 }
