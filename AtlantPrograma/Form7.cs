@@ -50,11 +50,10 @@ namespace AtlantPrograma
                     {
                         SaveDraft();
 
-                        MessageBox.Show("Черновик сохранён успешно!", "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
+                        MessageBox.Show("Черновик сохранён успешно!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         // Найдём открытую форму Form6 и вызовем у неё метод
                         //Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
-                       //form6?.LoadDraftMessages();
+                        //form6?.LoadDraftMessages();
 
                         this.Close();
                     }
@@ -75,21 +74,41 @@ namespace AtlantPrograma
                     {
                         SaveDraft();
 
-                        MessageBox.Show("Черновик сохранён успешно!", "Успешно", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        if (replyingToMessageId.HasValue)
+                        {
+                            // Отметим как прочитанное (или удалим, если нужно скрыть)
+                            using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                            {
+                                conn.Open();
 
-                        //Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
-                        //form6?.LoadDraftMessages();
+                                string updateQuery = "UPDATE messages SET is_draft = 1 WHERE id = @id";
+                                using (MySqlCommand cmd = new MySqlCommand(updateQuery, conn))
+                                {
+                                    cmd.Parameters.AddWithValue("@id", replyingToMessageId.Value);
+                                    cmd.ExecuteNonQuery();
+                                }
+                            }
 
-                        this.Close();
+                            MessageBox.Show("Черновик сохранён успешно!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                            // Обновим входящие
+                            Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+                            form6?.LoadIncomingMessages(); // 🔁 здесь вставь свой метод обновления
+                            form6?.ShowNotificationCount();
+                            //Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+                            //form6?.LoadDraftMessages();
+
+                            this.Close();
+                        }
+                        else if (saveDraft == DialogResult.No)
+                        {
+                            this.Close();
+                        }
                     }
-                    else if (saveDraft == DialogResult.No)
+                    else
                     {
                         this.Close();
                     }
-                }
-                else
-                {
-                    this.Close();
                 }
             }
         }
@@ -232,6 +251,7 @@ namespace AtlantPrograma
         private int? replyingToMessageId = null; // добавляем поле для хранения ID письма
 
         //private bool isDraftMode = false;  // Флаг, который будет указывать, что мы работаем с черновиками
+        private int replyTextStartIndex = 0;
 
         private void button1_Click(object sender, EventArgs e)
         {
@@ -250,27 +270,29 @@ namespace AtlantPrograma
 
             if (replyingToMessageId.HasValue)
             {
-                string currentText = richTextBox1.Text.Trim();
+                string currentText = richTextBox1.Text;
 
-                // Проверяем, что пользователь написал новый текст (не включая старую переписку)
-                string newAnswer = currentText.Replace(originalText.Trim(), "").Trim();
+                // Найдём, где начинается история
+                int historyIndex = currentText.IndexOf("--------------------------------------");
 
-                // Если новый текст пустой, показываем предупреждение
+                // Всё до начала истории — это новый ответ
+                string newAnswer = historyIndex >= 0
+                    ? currentText.Substring(0, historyIndex).Trim()
+                    : currentText.Trim(); // если пользователь ещё не вставил историю
+
                 if (string.IsNullOrWhiteSpace(newAnswer))
                 {
                     MessageBox.Show("Пожалуйста, введите текст ответа перед отправкой!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
-                // Собираем новое тело письма: новый ответ + старая переписка
-                body = newAnswer + "\n\n" + originalText.Trim();
+                // Сохраняем всё, как есть — с новым текстом и историей
+                body = currentText.Trim();
             }
             else
             {
-                // Если это не ответ, а новое сообщение
                 body = richTextBox1.Text.Trim();
             }
-
             try
             {
                 using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
@@ -427,10 +449,10 @@ WHERE id = @draftId";
             }
         }
 
-        string originalText; // сделаем это полем класса, чтобы доступно было другим методам
+        //string originalText; // сделаем это полем класса, чтобы доступно было другим методам
         public void SetReplyMode(string recipient, string subject, string originalBody, string originalSender, string originalDate, string originalTime, int messageId)
         {
-            replyingToMessageId = messageId; // сохраняем ID оригинального сообщения
+            replyingToMessageId = messageId;
 
             if (comboBox1.Items.Contains(recipient))
             {
@@ -444,21 +466,21 @@ WHERE id = @draftId";
 
             textBox1.Text = subject;
 
-            // Формируем оригинальный текст письма с дополнительным переводом строки
-            originalText =
+            string formattedHistory =
+                "\n\n" +
                 "--------------------------------------\n" +
                 $"Отправитель: {originalSender}\n" +
                 $"Дата: {originalDate} Время: {originalTime}\n" +
                 $"Тема: {subject}\n" +
                 "Текст:\n" +
-                originalBody +
-                "\n--------------------------------------\n\n";
+                originalBody.Trim() + "\n" +
+                "--------------------------------------\n";
 
-            // Вставляем историю сообщений сверху
-            richTextBox1.Text = originalText + richTextBox1.Text;
+            // Текст для редактирования сверху, история — снизу
+            richTextBox1.Text = "" + formattedHistory;
 
-            // Ставим курсор после последней линии истории, перед новым ответом
-            richTextBox1.SelectionStart = richTextBox1.Text.Length;
+            // Курсор ставим в самое начало
+            richTextBox1.SelectionStart = 0;
             richTextBox1.ScrollToCaret();
         }
     }

@@ -119,21 +119,25 @@ namespace AtlantPrograma
                 conn.Open();
 
                 string query = @"
-            SELECT 
-                m.id,
-                m.sender, 
-                m.subject, 
-                m.priority, 
-                m.date_sent, 
-                m.time_sent,
-                d.name AS department,
-                d.phones AS phone
-            FROM messages m
-            LEFT JOIN users u ON m.sender = u.username
-            LEFT JOIN user_details ud ON u.id = ud.user_id
-            LEFT JOIN departments d ON ud.department_id = d.id
-            WHERE m.recipient = @username AND m.is_read = 0 AND m.is_deleted = 0
-            ORDER BY m.id DESC";
+SELECT 
+    m.id,
+    m.sender, 
+    m.subject, 
+    m.priority, 
+    m.date_sent, 
+    m.time_sent,
+    d.name AS department,
+    d.phones AS phone
+FROM messages m
+LEFT JOIN users u ON m.sender = u.username
+LEFT JOIN user_details ud ON u.id = ud.user_id
+LEFT JOIN departments d ON ud.department_id = d.id
+WHERE m.recipient = @username 
+    AND m.is_read = 0 
+    AND m.is_deleted = 0 
+    AND m.is_draft = 0  -- добавляем фильтрацию по is_draft
+ORDER BY m.id DESC";
+
 
                 MySqlCommand cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@username", currentUser);
@@ -268,21 +272,25 @@ namespace AtlantPrograma
                 conn.Open();
 
                 string query = @"
-        SELECT 
-            m.id,
-            m.sender, 
-            m.subject, 
-            m.priority, 
-            m.date_sent, 
-            m.time_sent,
-            d.name AS department,
-            d.phones AS phone
-        FROM messages m
-        LEFT JOIN users u ON m.sender = u.username
-        LEFT JOIN user_details ud ON u.id = ud.user_id
-        LEFT JOIN departments d ON ud.department_id = d.id
-        WHERE m.recipient = @username AND m.is_read = 1 AND m.is_deleted = 0
-        ORDER BY m.id DESC";
+SELECT 
+    m.id,
+    m.sender, 
+    m.subject, 
+    m.priority, 
+    m.date_sent, 
+    m.time_sent,
+    d.name AS department,
+    d.phones AS phone
+FROM messages m
+LEFT JOIN users u ON m.sender = u.username
+LEFT JOIN user_details ud ON u.id = ud.user_id
+LEFT JOIN departments d ON ud.department_id = d.id
+WHERE m.recipient = @username 
+    AND m.is_read = 1 
+    AND m.is_deleted = 0 
+    AND m.is_draft = 0  -- добавляем фильтрацию по is_draft
+ORDER BY m.id DESC";
+
 
                 MySqlCommand cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@username", currentUser);
@@ -371,21 +379,25 @@ namespace AtlantPrograma
                 conn.Open();
 
                 string query = @"
-        SELECT 
-            m.id,
-            m.sender, 
-            m.subject, 
-            m.priority, 
-            m.date_sent, 
-            m.time_sent,
-            d.name AS department,
-            d.phones AS phone
-        FROM messages m
-        LEFT JOIN users u ON m.sender = u.username
-        LEFT JOIN user_details ud ON u.id = ud.user_id
-        LEFT JOIN departments d ON ud.department_id = d.id
-        WHERE m.recipient = @username AND m.is_read = 1 AND m.is_deleted = 0
-        ORDER BY m.id DESC";
+SELECT 
+    m.id,
+    m.sender, 
+    m.subject, 
+    m.priority, 
+    m.date_sent, 
+    m.time_sent,
+    d.name AS department,
+    d.phones AS phone
+FROM messages m
+LEFT JOIN users u ON m.sender = u.username
+LEFT JOIN user_details ud ON u.id = ud.user_id
+LEFT JOIN departments d ON ud.department_id = d.id
+WHERE m.recipient = @username 
+    AND m.is_read = 1 
+    AND m.is_deleted = 0 
+    AND m.is_draft = 0  -- добавляем фильтрацию по is_draft
+ORDER BY m.id DESC";
+
 
                 MySqlCommand cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@username", currentUser);
@@ -1397,24 +1409,24 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
             return body;
         }
 
-        private void MarkMessageAsRead(int messageId)
-        {
-            try
-            {
-                using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
-                {
-                    conn.Open();
-                    string query = "UPDATE messages SET is_read = 1 WHERE id = @id";
-                    MySqlCommand cmd = new MySqlCommand(query, conn);
-                    cmd.Parameters.AddWithValue("@id", messageId);
-                    cmd.ExecuteNonQuery();
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Ошибка при обновлении статуса письма: " + ex.Message);
-            }
-        }
+        //private void MarkMessageAsRead(int messageId)
+        //{
+        //    try
+        //    {
+        //        using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+        //        {
+        //            conn.Open();
+        //            string query = "UPDATE messages SET is_read = 1 WHERE id = @id";
+        //            MySqlCommand cmd = new MySqlCommand(query, conn);
+        //            cmd.Parameters.AddWithValue("@id", messageId);
+        //            cmd.ExecuteNonQuery();
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        MessageBox.Show("Ошибка при обновлении статуса письма: " + ex.Message);
+        //    }
+        //}
 
     }
 }
