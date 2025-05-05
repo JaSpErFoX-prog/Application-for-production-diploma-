@@ -63,7 +63,13 @@ namespace AtlantPrograma
             using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
             {
                 conn.Open();
-                string query = "SELECT COUNT(*) FROM messages WHERE recipient = @username AND is_read = 0 AND is_deleted = 0"; // добавляем фильтр is_deleted
+                string query = @"
+            SELECT COUNT(*) 
+            FROM messages 
+            WHERE recipient = @username 
+                AND is_read = 0 
+                AND is_deleted = 0 
+                AND is_draft = 0"; // добавляем фильтр is_deleted
                 MySqlCommand cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@username", currentUser);
 
@@ -135,7 +141,7 @@ LEFT JOIN departments d ON ud.department_id = d.id
 WHERE m.recipient = @username 
     AND m.is_read = 0 
     AND m.is_deleted = 0 
-    AND m.is_draft = 0  -- добавляем фильтрацию по is_draft
+    AND m.is_draft = 0
 ORDER BY m.id DESC";
 
 
@@ -214,7 +220,7 @@ ORDER BY m.id DESC";
                     }
 
                     // Обновляем флаг прочтения
-                    string updateQuery = "UPDATE messages SET is_read = 1 WHERE sender = @sender AND recipient = @recipient AND subject = @subject";
+                    string updateQuery = "UPDATE messages SET is_read = 1, is_sent = 0 WHERE sender = @sender AND recipient = @recipient AND subject = @subject";
                     MySqlCommand updateCmd = new MySqlCommand(updateQuery, conn);
                     updateCmd.Parameters.AddWithValue("@sender", senderUsername);
                     updateCmd.Parameters.AddWithValue("@recipient", currentUser);
@@ -288,7 +294,8 @@ LEFT JOIN departments d ON ud.department_id = d.id
 WHERE m.recipient = @username 
     AND m.is_read = 1 
     AND m.is_deleted = 0 
-    AND m.is_draft = 0  -- добавляем фильтрацию по is_draft
+    AND m.is_draft = 0
+    AND m.is_sent = 0
 ORDER BY m.id DESC";
 
 
@@ -342,7 +349,7 @@ ORDER BY m.id DESC";
                 }
             }
         }
-        private void LoadReadMessages()
+        public void LoadReadMessages()
         {
             // Обновляем обработчики мыши
             dataGridView1.MouseDown -= dataGridView1_MouseDown;
@@ -395,7 +402,8 @@ LEFT JOIN departments d ON ud.department_id = d.id
 WHERE m.recipient = @username 
     AND m.is_read = 1 
     AND m.is_deleted = 0 
-    AND m.is_draft = 0  -- добавляем фильтрацию по is_draft
+    AND m.is_draft = 0
+    AND m.is_sent = 0
 ORDER BY m.id DESC";
 
 
@@ -528,21 +536,25 @@ ORDER BY m.id DESC";
             {
                 conn.Open();
                 string query = @"
-            SELECT 
-                m.id,
-                m.sender, 
-                m.subject, 
-                m.priority, 
-                m.date_sent, 
-                m.time_sent,
-                d.name AS department,
-                d.phones AS phone
-            FROM messages m
-            LEFT JOIN users u ON m.sender = u.username
-            LEFT JOIN user_details ud ON u.id = ud.user_id
-            LEFT JOIN departments d ON ud.department_id = d.id
-            WHERE m.recipient = @username AND m.is_deleted = 1
-            ORDER BY m.id DESC";
+SELECT 
+    m.id,
+    m.sender, 
+    m.subject, 
+    m.priority, 
+    m.date_sent, 
+    m.time_sent,
+    d.name AS department,
+    d.phones AS phone
+FROM messages m
+LEFT JOIN users u ON m.sender = u.username
+LEFT JOIN user_details ud ON u.id = ud.user_id
+LEFT JOIN departments d ON ud.department_id = d.id
+WHERE 
+    m.recipient = @username 
+    AND m.is_deleted = 1 
+    AND m.is_draft = 0 
+    AND m.is_sent = 0
+ORDER BY m.id DESC";
 
                 MySqlCommand cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@username", currentUser);
@@ -616,21 +628,21 @@ ORDER BY m.id DESC";
                 conn.Open();
 
                 string query = @"
-            SELECT 
-                m.id,
-                m.recipient, 
-                m.subject, 
-                m.priority, 
-                m.date_sent, 
-                m.time_sent,
-                d.name AS department,
-                d.phones AS phone
-            FROM messages m
-            LEFT JOIN users u ON m.recipient = u.username
-            LEFT JOIN user_details ud ON u.id = ud.user_id
-            LEFT JOIN departments d ON ud.department_id = d.id
-            WHERE m.sender = @sender AND m.is_read = 0 AND m.is_deleted = 0
-            ORDER BY m.id DESC";
+SELECT 
+    m.id,
+    m.recipient, 
+    m.subject, 
+    m.priority, 
+    m.date_sent, 
+    m.time_sent,
+    d.name AS department,
+    d.phones AS phone
+FROM messages m
+LEFT JOIN users u ON m.recipient = u.username
+LEFT JOIN user_details ud ON u.id = ud.user_id
+LEFT JOIN departments d ON ud.department_id = d.id
+WHERE m.sender = @sender AND m.is_read = 0 AND m.is_deleted = 0 AND m.is_draft = 0 AND m.is_sent = 1
+ORDER BY m.id DESC";
 
                 MySqlCommand cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@sender", currentUser);
@@ -1407,6 +1419,40 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
             }
 
             return body;
+        }
+
+        private void ответитьToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            if (dataGridView1.SelectedRows.Count > 0)
+            {
+                DataGridViewRow selectedRow = dataGridView1.SelectedRows[0];
+
+                string originalSender = selectedRow.Cells["sender"].Value.ToString();
+                string originalSubject = selectedRow.Cells["subject"].Value.ToString();
+                string originalDate = selectedRow.Cells["date_sent"].Value.ToString();
+                string originalTime = selectedRow.Cells["time_sent"].Value.ToString();
+                int messageId = Convert.ToInt32(selectedRow.Cells["message_id"].Value);
+
+                string originalBody = GetMessageBodyById(messageId); // <-- получаем текст через отдельный метод
+
+                Form7 replyForm = new Form7(currentUser); // currentUser — это тот, кто отвечает
+
+                // Устанавливаем получателя, тему и оригинальный текст
+                replyForm.SetReplyMode(
+                    recipient: originalSender,
+                    subject: originalSubject,
+                    originalBody: originalBody,
+                    originalSender: originalSender,
+                    originalDate: originalDate,
+                    originalTime: originalTime,
+                    messageId: messageId
+                );
+
+                // Помечаем оригинальное письмо как прочитанное
+                //MarkMessageAsRead(messageId);
+
+                replyForm.Show();
+            }
         }
 
         //private void MarkMessageAsRead(int messageId)

@@ -6,6 +6,7 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -29,6 +30,8 @@ namespace AtlantPrograma
         }
 
         private bool isReadOnlyMode = false;
+
+        bool isReplyRead = false;
         private void button2_Click(object sender, EventArgs e)
         {
             if (!isReadOnlyMode)
@@ -37,6 +40,79 @@ namespace AtlantPrograma
                 bool hasSubject = !string.IsNullOrWhiteSpace(textBox1.Text);
                 bool hasBody = !string.IsNullOrWhiteSpace(richTextBox1.Text);
 
+                string currentRecipient = comboBox1.Text.Trim();
+                string currentSubject = textBox1.Text.Trim();
+                string currentBody = richTextBox1.Text.Trim();
+                // Если редактируется существующий черновик
+                if (openedDraftId != null)
+                {
+                    bool hasChanges = false;
+
+                    try
+                    {
+                        using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                        {
+                            conn.Open();
+                            string query = "SELECT recipient, subject, body FROM drafts WHERE id = @id";
+                            using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                            {
+                                cmd.Parameters.AddWithValue("@id", openedDraftId.Value);
+                                using (MySqlDataReader reader = cmd.ExecuteReader())
+                                {
+                                    if (reader.Read())
+                                    {
+                                        string dbRecipient = reader.IsDBNull(0) ? "" : reader.GetString(0).Trim();
+                                        string dbSubject = reader.IsDBNull(1) ? "" : reader.GetString(1).Trim();
+                                        string dbBody = reader.IsDBNull(2) ? "" : reader.GetString(2).Trim();
+
+                                        if (dbRecipient != currentRecipient ||
+                                            dbSubject != currentSubject ||
+                                            dbBody != currentBody)
+                                        {
+                                            hasChanges = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Ошибка при проверке изменений черновика: " + ex.Message);
+                    }
+
+                    if (hasChanges)
+                    {
+                        DialogResult result = MessageBox.Show(
+                            "Вы внесли изменения в черновик. Сохранить их?",
+                            "Сохранение изменений",
+                            MessageBoxButtons.YesNoCancel,
+                            MessageBoxIcon.Question);
+
+                        if (result == DialogResult.Yes)
+                        {
+                            UpdateDraft(); // Ниже покажу этот метод
+                            MessageBox.Show("Изменения сохранены!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            this.Close();
+                        }
+                        else if (result == DialogResult.No)
+                        {
+                            this.Close();
+                        }
+                        // Cancel — ничего не делаем
+                    }
+                    else
+                    {
+                        // Без изменений — просто выходим
+                        this.Close();
+                    }
+
+                    return;
+                }
+                else
+                {
+                    this.Close();
+                }
                 // Если нет получателя, но есть тема/текст — предлагать сохранить
                 if (!hasRecipient && (hasSubject || hasBody))
                 {
@@ -73,13 +149,24 @@ namespace AtlantPrograma
                     if (saveDraft == DialogResult.Yes)
                     {
                         SaveDraft();
+                        MessageBox.Show("Черновик сохранён успешно!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                         if (replyingToMessageId.HasValue)
                         {
-                            // Отметим как прочитанное (или удалим, если нужно скрыть)
                             using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
                             {
                                 conn.Open();
+
+                                string checkQuery = "SELECT is_read FROM messages WHERE id = @id";
+                                using (MySqlCommand checkCmd = new MySqlCommand(checkQuery, conn))
+                                {
+                                    checkCmd.Parameters.AddWithValue("@id", replyingToMessageId.Value);
+                                    object result = checkCmd.ExecuteScalar();
+                                    if (result != null && Convert.ToInt32(result) == 1)
+                                    {
+                                        isReplyRead = true;
+                                    }
+                                }
 
                                 string updateQuery = "UPDATE messages SET is_draft = 1 WHERE id = @id";
                                 using (MySqlCommand cmd = new MySqlCommand(updateQuery, conn))
@@ -89,29 +176,70 @@ namespace AtlantPrograma
                                 }
                             }
 
-                            MessageBox.Show("Черновик сохранён успешно!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                            // Обновим входящие
                             Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
-                            form6?.LoadIncomingMessages(); // 🔁 здесь вставь свой метод обновления
-                            form6?.ShowNotificationCount();
-                            //Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
-                            //form6?.LoadDraftMessages();
-
-                            this.Close();
+                            if (form6 != null)
+                            {
+                                if (isReplyRead)
+                                    form6.LoadReadMessages();
+                                else
+                                {
+                                    form6.LoadIncomingMessages();
+                                    form6.ShowNotificationCount();
+                                }
+                            }
                         }
-                        else if (saveDraft == DialogResult.No)
-                        {
-                            this.Close();
-                        }
+                        this.Close(); // ← Закрываем форму только один раз здесь!
                     }
-                    else
+                    else if (saveDraft == DialogResult.No)
                     {
                         this.Close();
                     }
                 }
             }
+            else
+            {
+                this.Close(); // Закрыть форму в режиме только чтения
+            }
         }
+
+        private void UpdateDraft()
+        {
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                {
+                    conn.Open();
+
+                    string query = @"
+                UPDATE drafts
+                SET recipient = @recipient,
+                    subject = @subject,
+                    body = @body,
+                    priority = @priority,
+                    date_created = @date,
+                    time_created = @time
+                WHERE id = @id";
+
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@recipient", comboBox1.Text.Trim());
+                        cmd.Parameters.AddWithValue("@subject", textBox1.Text.Trim());
+                        cmd.Parameters.AddWithValue("@body", richTextBox1.Text.Trim());
+                        cmd.Parameters.AddWithValue("@priority", comboBox2.Text); // Можно проверить на null
+                        cmd.Parameters.AddWithValue("@date", DateTime.Now.ToString("dd.MM.yyyy"));
+                        cmd.Parameters.AddWithValue("@time", DateTime.Now.ToString("HH:mm:ss"));
+                        cmd.Parameters.AddWithValue("@id", openedDraftId.Value);
+
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при обновлении черновика: " + ex.Message);
+            }
+        }
+
         private void SaveDraft()
         {
             string recipient = comboBox1.SelectedItem?.ToString() ?? "";
@@ -251,7 +379,7 @@ namespace AtlantPrograma
         private int? replyingToMessageId = null; // добавляем поле для хранения ID письма
 
         //private bool isDraftMode = false;  // Флаг, который будет указывать, что мы работаем с черновиками
-        private int replyTextStartIndex = 0;
+        //private int replyTextStartIndex = 0;
 
         private void button1_Click(object sender, EventArgs e)
         {
@@ -295,6 +423,7 @@ namespace AtlantPrograma
             }
             try
             {
+                long insertedMessageId;
                 using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
                 {
                     conn.Open();
@@ -312,20 +441,47 @@ namespace AtlantPrograma
                         cmd.Parameters.AddWithValue("@time", timeSent);
 
                         cmd.ExecuteNonQuery();
-                    }
+                        insertedMessageId = cmd.LastInsertedId; // Вот здесь мы получаем ID
+                    }               
+
+                    bool isFromRead = false;
 
                     if (replyingToMessageId.HasValue)
                     {
-                        string updateQuery = "UPDATE messages SET is_read = 1 WHERE id = @id";
+                        // Получаем значение is_read по ID
+                        string checkReadQuery = "SELECT is_read FROM messages WHERE id = @id";
+                        using (MySqlCommand checkCmd = new MySqlCommand(checkReadQuery, conn))
+                        {
+                            checkCmd.Parameters.AddWithValue("@id", insertedMessageId);
+                            object result = checkCmd.ExecuteScalar();
+                            if (result != null && Convert.ToBoolean(result))
+                            {
+                                isFromRead = true;
+                            }
+                        }
+
+                        // Обновляем is_sent, но уже сделали выше
+                        string updateQuery = "UPDATE messages SET is_sent = 1 WHERE id = @id";
                         using (MySqlCommand updateCmd = new MySqlCommand(updateQuery, conn))
                         {
-                            updateCmd.Parameters.AddWithValue("@id", replyingToMessageId.Value);
+                            updateCmd.Parameters.AddWithValue("@id", insertedMessageId);
                             updateCmd.ExecuteNonQuery();
                         }
                     }
+                    else
+                    {
+                        string updateSentQuery = "UPDATE messages SET is_sent = 1 WHERE id = @id";
+                        using (MySqlCommand updateCmd = new MySqlCommand(updateSentQuery, conn))
+                        {
+                            updateCmd.Parameters.AddWithValue("@id", insertedMessageId);
+                            updateCmd.ExecuteNonQuery();
+                        }
+                    }
+                    bool isFromDraft = false;
 
                     if (openedDraftId.HasValue)
                     {
+                        isFromDraft = true;
                         string updateDraftQuery = "UPDATE drafts SET is_sent = 1 WHERE id = @id";
                         using (MySqlCommand updateCmd = new MySqlCommand(updateDraftQuery, conn))
                         {
@@ -339,8 +495,24 @@ namespace AtlantPrograma
                     MessageBox.Show("Письмо успешно отправлено!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                     Form6 form6Notif = Application.OpenForms.OfType<Form6>().FirstOrDefault();
-                    form6Notif?.ShowNotificationCount();
-                    form6Notif?.LoadIncomingMessages();
+
+                    if (isFromDraft)
+                    {
+                        // Ничего не обновляем дополнительно — уже обновили LoadDraftMessages()
+                    }
+                    else if (isFromRead)
+                    {
+                        form6Notif?.LoadReadMessages(); // если из Прочитанных
+                    }
+                    //else if (insertedMessageId!=0)
+                    //{
+
+                    //}
+                    else
+                    {
+                        form6Notif?.ShowNotificationCount();
+                        form6Notif?.LoadIncomingMessages(); // если из Входящих
+                    }
 
                     this.Close();
                 }
@@ -368,9 +540,14 @@ namespace AtlantPrograma
 
             this.Text = "ПРОСМОТР СООБЩЕНИЯ";
         }
+
         public void LoadDraftForEditing(int draftId)
         {
+            // Курсор ставим в самое начало
+            //richTextBox1.SelectionStart = 0;
+            //richTextBox1.ScrollToCaret();
             //isDraftMode = true;
+
             this.openedDraftId = draftId;
             try
             {
@@ -416,7 +593,37 @@ WHERE id = @draftId";
                             //comboBox1.ForeColor = Color.Black; // <-- сброс цвета на чёрный
                             textBox1.Text = subject;              // Тема
                             richTextBox1.Text = body;             // Текст письма
+                                                                  // Проверяем на наличие пунктирной линии где угодно
+                            //string pattern = @"^\s*-{3,}\s*$"; // строка из 3 и более дефисов
+                            string[] lines = body.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+                            bool foundDashedLine = false;
 
+                            for (int i = 0; i < lines.Length; i++)
+                            {
+                                string trimmedLine = lines[i].Trim(); // убираем пробелы и невидимые символы
+
+                                if (trimmedLine.All(c => c == '-') && trimmedLine.Length >= 5)
+                                {
+                                    foundDashedLine = true;
+
+                                    // Вставляем отступ перед линией, если нужно
+                                    if (i == 0 || !string.IsNullOrWhiteSpace(lines[i - 1]))
+                                    {
+                                        lines = lines.Take(i).Concat(new[] { "", "" }).Concat(lines.Skip(i)).ToArray();
+                                    }
+
+                                    break;
+                                }
+                            }
+
+
+                            richTextBox1.Text = string.Join(Environment.NewLine, lines);
+
+                            if (foundDashedLine)
+                            {
+                                richTextBox1.SelectionStart = 0;
+                                richTextBox1.ScrollToCaret();
+                            }
                             // Для приоритета
                             if (!string.IsNullOrEmpty(priority))
                             {
