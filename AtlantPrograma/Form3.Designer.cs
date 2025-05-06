@@ -89,6 +89,7 @@
             this.pictureBox2.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.pictureBox2.TabIndex = 3;
             this.pictureBox2.TabStop = false;
+            this.pictureBox2.Visible = false;
             // 
             // label2
             // 
@@ -99,6 +100,7 @@
             this.label2.Size = new System.Drawing.Size(203, 31);
             this.label2.TabIndex = 4;
             this.label2.Text = "Документооборот";
+            this.label2.Visible = false;
             // 
             // Form3
             // 

@@ -40,9 +40,10 @@ namespace AtlantPrograma
                 bool hasSubject = !string.IsNullOrWhiteSpace(textBox1.Text);
                 bool hasBody = !string.IsNullOrWhiteSpace(richTextBox1.Text);
 
-                string currentRecipient = comboBox1.Text.Trim();
-                string currentSubject = textBox1.Text.Trim();
-                string currentBody = richTextBox1.Text.Trim();
+               //string currentRecipient = comboBox1.Text.Trim();
+                //string currentSubject = textBox1.Text.Trim();
+                //string currentBody = richTextBox1.Text.Trim();
+
                 // Если редактируется существующий черновик
                 if (openedDraftId != null)
                 {
@@ -65,9 +66,9 @@ namespace AtlantPrograma
                                         string dbSubject = reader.IsDBNull(1) ? "" : reader.GetString(1).Trim();
                                         string dbBody = reader.IsDBNull(2) ? "" : reader.GetString(2).Trim();
 
-                                        if (dbRecipient != currentRecipient ||
-                                            dbSubject != currentSubject ||
-                                            dbBody != currentBody)
+                                        if (dbRecipient != comboBox1.Text.Trim() ||
+                                    dbSubject != textBox1.Text.Trim() ||
+                                    dbBody != richTextBox1.Text.Trim())
                                         {
                                             hasChanges = true;
                                         }
@@ -106,13 +107,12 @@ namespace AtlantPrograma
                         // Без изменений — просто выходим
                         this.Close();
                     }
-
                     return;
                 }
-                else
-                {
-                    this.Close();
-                }
+                //else
+                //{
+                //    this.Close();
+                //}
                 // Если нет получателя, но есть тема/текст — предлагать сохранить
                 if (!hasRecipient && (hasSubject || hasBody))
                 {
@@ -194,6 +194,10 @@ namespace AtlantPrograma
                     {
                         this.Close();
                     }
+                }
+                else
+                {
+                    this.Close();
                 }
             }
             else
@@ -467,6 +471,14 @@ namespace AtlantPrograma
                             updateCmd.Parameters.AddWithValue("@id", insertedMessageId);
                             updateCmd.ExecuteNonQuery();
                         }
+
+                        // Обновляем is_sent, но уже сделали выше
+                        string updateQuery1 = "UPDATE messages SET is_sent = 0 WHERE id = @id";
+                        using (MySqlCommand updateCmd = new MySqlCommand(updateQuery1, conn))
+                        {
+                            updateCmd.Parameters.AddWithValue("@id", replyingToMessageId.Value);
+                            updateCmd.ExecuteNonQuery();
+                        }
                     }
                     else
                     {
@@ -504,10 +516,10 @@ namespace AtlantPrograma
                     {
                         form6Notif?.LoadReadMessages(); // если из Прочитанных
                     }
-                    //else if (insertedMessageId!=0)
-                    //{
+                    else if (!replyingToMessageId.HasValue)
+                    {
 
-                    //}
+                    }
                     else
                     {
                         form6Notif?.ShowNotificationCount();
@@ -592,7 +604,7 @@ WHERE id = @draftId";
                             }
                             //comboBox1.ForeColor = Color.Black; // <-- сброс цвета на чёрный
                             textBox1.Text = subject;              // Тема
-                            richTextBox1.Text = body;             // Текст письма
+                            //richTextBox1.Text = body;             // Текст письма
                                                                   // Проверяем на наличие пунктирной линии где угодно
                             //string pattern = @"^\s*-{3,}\s*$"; // строка из 3 и более дефисов
                             string[] lines = body.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);

@@ -49,3 +49,4 @@ D:\diplom\programma\AtlantPrograma\obj\Debug\AtlantPrograma.csproj.SuggestedBind
 D:\diplom\programma\AtlantPrograma\obj\Debug\AtlantPr.1FAFBE95.Up2Date
 D:\diplom\programma\AtlantPrograma\obj\Debug\AtlantPrograma.Form6.resources
 D:\diplom\programma\AtlantPrograma\obj\Debug\AtlantPrograma.Form7.resources
+D:\diplom\programma\AtlantPrograma\obj\Debug\AtlantPrograma.Form8.resources

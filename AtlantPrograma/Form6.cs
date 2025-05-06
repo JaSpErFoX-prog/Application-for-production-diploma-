@@ -28,6 +28,32 @@ namespace AtlantPrograma
 
         private void Form6_Load(object sender, EventArgs e)
         {
+            // Настройка автозаполнения для textBox1
+            AutoCompleteStringCollection autoCompleteCollection = new AutoCompleteStringCollection();
+
+            // Получаем список пользователей из базы данных
+            using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            {
+                try
+                {
+                    conn.Open();
+                    MySqlCommand cmd = new MySqlCommand("SELECT username FROM users", conn);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                            autoCompleteCollection.Add(reader.GetString("username"));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Ошибка при получении списка пользователей: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+
+            // Применяем автозаполнение
+            textBox1.AutoCompleteCustomSource = autoCompleteCollection;
+            textBox1.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+            textBox1.AutoCompleteSource = AutoCompleteSource.CustomSource;
 
             label1.Text = $"Почта пользователя {currentUser}";
             label2.Text = ""; // Сброс уведомлений
@@ -40,6 +66,8 @@ namespace AtlantPrograma
             пометитьКакПрочитанноеToolStripMenuItem1.Enabled = false;
             поместитьВКорзинуToolStripMenuItem.Enabled = false;
             действияСЧерновикамиToolStripMenuItem.Enabled = false;
+            переслатьСообщенияToolStripMenuItem.Enabled = false;
+            восстановитьПрочитанноеToolStripMenuItem.Enabled = false;
         }
         private void button4_Click(object sender, EventArgs e)
         {
@@ -57,6 +85,7 @@ namespace AtlantPrograma
             пометитьКакПрочитанноеToolStripMenuItem1.Enabled = true;
             отправитьВсемToolStripMenuItem1.Enabled = true;
             действияСЧерновикамиToolStripMenuItem.Enabled = false;
+            переслатьСообщенияToolStripMenuItem.Enabled = true;
         }
         public void ShowNotificationCount()
         {
@@ -69,7 +98,8 @@ namespace AtlantPrograma
             WHERE recipient = @username 
                 AND is_read = 0 
                 AND is_deleted = 0 
-                AND is_draft = 0"; // добавляем фильтр is_deleted
+                AND is_draft = 0
+                AND is_sent = 1"; // добавляем фильтр is_deleted
                 MySqlCommand cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@username", currentUser);
 
@@ -91,6 +121,7 @@ namespace AtlantPrograma
         public void LoadIncomingMessages()
         {
             // Обновляем обработчики мыши
+
             dataGridView1.MouseDown -= dataGridView1_MouseDown;
             dataGridView1.MouseDown -= dataGridView1_MouseDown1;
             dataGridView1.MouseDown += dataGridView1_MouseDown;
@@ -142,6 +173,7 @@ WHERE m.recipient = @username
     AND m.is_read = 0 
     AND m.is_deleted = 0 
     AND m.is_draft = 0
+    AND m.is_sent = 1
 ORDER BY m.id DESC";
 
 
@@ -220,7 +252,7 @@ ORDER BY m.id DESC";
                     }
 
                     // Обновляем флаг прочтения
-                    string updateQuery = "UPDATE messages SET is_read = 1, is_sent = 0 WHERE sender = @sender AND recipient = @recipient AND subject = @subject";
+                    string updateQuery = "UPDATE messages SET is_read = 1 WHERE sender = @sender AND recipient = @recipient AND subject = @subject";
                     MySqlCommand updateCmd = new MySqlCommand(updateQuery, conn);
                     updateCmd.Parameters.AddWithValue("@sender", senderUsername);
                     updateCmd.Parameters.AddWithValue("@recipient", currentUser);
@@ -243,6 +275,8 @@ ORDER BY m.id DESC";
             пометитьКакПрочитанноеToolStripMenuItem1.Enabled = false;
             отправитьВсемToolStripMenuItem1.Enabled = false;
             действияСЧерновикамиToolStripMenuItem.Enabled = false;
+            переслатьСообщенияToolStripMenuItem.Enabled = true;
+            восстановитьПрочитанноеToolStripMenuItem.Enabled = true;
             // Обновляем обработчики мыши
             dataGridView1.MouseDown -= dataGridView1_MouseDown;
             dataGridView1.MouseDown -= dataGridView1_MouseDown1;
@@ -295,7 +329,7 @@ WHERE m.recipient = @username
     AND m.is_read = 1 
     AND m.is_deleted = 0 
     AND m.is_draft = 0
-    AND m.is_sent = 0
+    AND m.is_sent = 1
 ORDER BY m.id DESC";
 
 
@@ -403,7 +437,7 @@ WHERE m.recipient = @username
     AND m.is_read = 1 
     AND m.is_deleted = 0 
     AND m.is_draft = 0
-    AND m.is_sent = 0
+    AND m.is_sent = 1
 ORDER BY m.id DESC";
 
 
@@ -506,6 +540,7 @@ ORDER BY m.id DESC";
             восстановитьПомеченноеToolStripMenuItem1.Enabled = true;
             очиститьКорзинуToolStripMenuItem1.Enabled = true;
             действияСЧерновикамиToolStripMenuItem.Enabled = false;
+            переслатьСообщенияToolStripMenuItem.Enabled = false;
             //dataGridView1.MouseDown -= dataGridView1_MouseDown;
             //dataGridView1.MouseDown -= dataGridView1_MouseDown1;
             dataGridView1.Columns.Clear();
@@ -605,6 +640,7 @@ ORDER BY m.id DESC";
             действияСКорзинойToolStripMenuItem.Enabled = false;
             действияСпочтойToolStripMenuItem.Enabled = false;
             действияСЧерновикамиToolStripMenuItem.Enabled = false;
+            переслатьСообщенияToolStripMenuItem.Enabled = false;
 
             dataGridView1.Columns.Clear();
             dataGridView1.Rows.Clear();
@@ -979,6 +1015,7 @@ ORDER BY m.id DESC";
             действияСЧерновикамиToolStripMenuItem.Enabled = true;
             восстановитьУдалённоеToolStripMenuItem.Enabled = true;
             удалитьЧерновикиToolStripMenuItem.Enabled = true;
+            переслатьСообщенияToolStripMenuItem.Enabled = false;
 
             // Очистка таблицы
             dataGridView1.Columns.Clear();
@@ -1090,16 +1127,40 @@ ORDER BY d.date_created DESC, d.time_created DESC;";
         }
         private void dataGridView1_CellContentClick_1(object sender, DataGridViewCellEventArgs e)
         {
-            // Проверяем, что клик был по кнопке "Открыть"
-            if (e.ColumnIndex == dataGridView1.Columns["open_button"].Index && e.RowIndex >= 0)
+            // Проверяем, что клик был по ячейке в пределах данных
+            if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
             {
-                // Получаем ID черновика
-                int draftId = (int)dataGridView1.Rows[e.RowIndex].Cells["draft_id"].Value;
+                // Проверяем, есть ли колонка с кнопкой "Открыть" только в таблице черновиков
+                if (dataGridView1.Columns.Contains("open_button") && e.ColumnIndex == dataGridView1.Columns["open_button"].Index)
+                {
+                    // Получаем ID черновика
+                    int draftId = 0;
+                    if (dataGridView1.Rows[e.RowIndex].Cells["draft_id"].Value != null)
+                    {
+                        draftId = (int)dataGridView1.Rows[e.RowIndex].Cells["draft_id"].Value;
+                    }
 
-                // Открываем Form7 и передаем только ID
-                Form7 form7 = new Form7(currentUser);
-                form7.LoadDraftForEditing(draftId);
-                form7.Show();
+                    // Открываем Form7 и передаем только ID
+                    Form7 form7 = new Form7(currentUser);
+                    form7.LoadDraftForEditing(draftId);
+                    form7.Show();
+                }
+            }
+            // Проверяем, что клик был по кнопке "Открыть"
+            //if (e.ColumnIndex == dataGridView1.Columns["open_button"].Index && e.RowIndex >= 0)
+            //{
+            //    // Получаем ID черновика
+            //    int draftId = (int)dataGridView1.Rows[e.RowIndex].Cells["draft_id"].Value;
+
+            //    // Открываем Form7 и передаем только ID
+            //    Form7 form7 = new Form7(currentUser);
+            //    form7.LoadDraftForEditing(draftId);
+            //    form7.Show();
+            //}
+            else
+            {
+                // Если клик был по другим ячейкам, например по чекбоксам или другим столбцам, ничего не делаем
+                // В случае необходимости, сюда можно добавить обработку других типов кликов.
             }
         }
 
@@ -1454,6 +1515,315 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
                 replyForm.Show();
             }
         }
+
+        private void переслатьСообщенияToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            dataGridView1.EndEdit();
+            dataGridView1.CommitEdit(DataGridViewDataErrorContexts.Commit);
+
+            List<int> selectedMessageIds = new List<int>();
+
+            foreach (DataGridViewRow row in dataGridView1.Rows)
+            {
+                if (row.Cells[0] is DataGridViewCheckBoxCell checkbox &&
+                    checkbox.Value != null &&
+                    Convert.ToBoolean(checkbox.Value))
+                {
+                    if (row.Cells["message_id"].Value != null)
+                        selectedMessageIds.Add(Convert.ToInt32(row.Cells["message_id"].Value));
+                }
+            }
+
+            if (selectedMessageIds.Count == 0)
+            {
+                MessageBox.Show("Выберите хотя бы одно сообщение для пересылки", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // Получаем список пользователей
+            List<string> users = new List<string>();
+            using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            {
+                try
+                {
+                    conn.Open();
+                    MySqlCommand cmd = new MySqlCommand("SELECT username FROM users", conn);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                            users.Add(reader.GetString("username"));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Ошибка при получении списка пользователей: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+            }
+
+            // Мини-форма выбора получателя
+            string selectedRecipient = ShowRecipientSelectDialog(users, currentUser);
+            if (string.IsNullOrEmpty(selectedRecipient))
+            {
+                MessageBox.Show("Получатель не выбран. Пересылка отменена", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            string currentUserLogin = currentUser; // <- Замени на актуального пользователя
+            if (selectedRecipient == currentUserLogin)
+            {
+                MessageBox.Show("Нельзя пересылать сообщения самому себе", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                {
+                    conn.Open();
+
+                    foreach (int id in selectedMessageIds)
+                    {
+                        string selectQuery = "SELECT sender, subject, body, priority, is_read, is_sent, is_deleted FROM messages WHERE id = @id";
+                        using (MySqlCommand selectCmd = new MySqlCommand(selectQuery, conn))
+                        {
+                            selectCmd.Parameters.AddWithValue("@id", id);
+                            using (MySqlDataReader reader = selectCmd.ExecuteReader())
+                            {
+                                if (reader.Read())
+                                {
+                                    string originalSender = reader.GetString("sender");
+                                    string subject = reader.GetString("subject");
+                                    string body = reader.GetString("body");
+                                    string priority = reader.GetString("priority");
+                                    bool is_read = reader.GetBoolean("is_read");
+                                    bool is_sent = reader.GetBoolean("is_sent");
+                                    bool is_deleted = reader.GetBoolean("is_deleted");
+
+                                    // Формируем тело пересланного сообщения
+                                    body = $"--- Пересланное сообщение ---\n\nОт: {originalSender}\nТема: {subject}\nТекст:\n{body}\n\n";
+
+                                    reader.Close();
+
+                                    // Проверка, не пересылалось ли уже такое сообщение этому же получателю
+                                    string checkQuery = @"SELECT COUNT(*) FROM messages 
+                                              WHERE sender = @sender 
+                                              AND recipient = @recipient 
+                                              AND subject = @subject 
+                                              AND body = @body 
+                                              AND is_deleted = 0";
+                                    using (MySqlCommand checkCmd = new MySqlCommand(checkQuery, conn))
+                                    {
+                                        checkCmd.Parameters.AddWithValue("@sender", currentUserLogin);
+                                        checkCmd.Parameters.AddWithValue("@recipient", selectedRecipient);
+                                        checkCmd.Parameters.AddWithValue("@subject", subject);
+                                        checkCmd.Parameters.AddWithValue("@body", body);
+
+                                        int count = Convert.ToInt32(checkCmd.ExecuteScalar());
+
+                                        // Если сообщение уже существует в базе, пропускаем пересылку
+                                        if (count > 0)
+                                        {
+                                            MessageBox.Show("Это сообщение уже было переслано данному пользователю", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                            return; // Пропускаем пересылку этого сообщения
+                                        }
+                                    }
+
+                                    // Вставка пересланного сообщения с текущей датой/временем
+                                    string insertQuery = @"INSERT INTO messages 
+                                                (sender, recipient, subject, body, priority, date_sent, time_sent, is_read, is_sent, is_deleted) 
+                                                VALUES 
+                                                (@sender, @recipient, @subject, @body, @priority, @date_sent, @time_sent, @is_read, @is_sent, @is_deleted)";
+                                    using (MySqlCommand insertCmd = new MySqlCommand(insertQuery, conn))
+                                    {
+                                        insertCmd.Parameters.AddWithValue("@sender", currentUserLogin);
+                                        insertCmd.Parameters.AddWithValue("@recipient", selectedRecipient);
+                                        insertCmd.Parameters.AddWithValue("@subject", subject);
+                                        insertCmd.Parameters.AddWithValue("@body", body);
+                                        insertCmd.Parameters.AddWithValue("@priority", priority);
+                                        insertCmd.Parameters.AddWithValue("@date_sent", DateTime.Now.ToString("dd.MM.yyyy"));
+                                        insertCmd.Parameters.AddWithValue("@time_sent", DateTime.Now.ToString("HH:mm:ss"));
+                                        insertCmd.Parameters.AddWithValue("@is_read", false); // Новое сообщение — непрочитанное
+                                        insertCmd.Parameters.AddWithValue("@is_sent", true);  // Переслано — считается отправленным
+                                        insertCmd.Parameters.AddWithValue("@is_deleted", false);
+
+                                        insertCmd.ExecuteNonQuery();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    MessageBox.Show("Сообщения успешно пересланы!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    // Обновление данных в зависимости от текущей вкладки
+                    if (currentView == "read")
+                    {
+                        LoadReadMessages(); // Метод для обновления прочитанных сообщений
+                    }
+                    else
+                    {
+                        LoadIncomingMessages(); // Метод для обновления входящих сообщений
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при пересылке сообщений: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+
+        // Метод выбора получателя через встроенную мини-форму
+        private string ShowRecipientSelectDialog(List<string> users, string currentUser)
+        {
+            // Исключаем администратора и текущего пользователя
+            var filteredUsers = users
+                .Where(u =>
+                    !string.Equals(u, "admin", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(u, currentUser, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            Form prompt = new Form()
+            {
+                Width = 350,
+                Height = 160,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                Text = "Выбор получателя",
+                StartPosition = FormStartPosition.CenterParent,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            Label label = new Label()
+            {
+                Left = 10,
+                Top = 10,
+                Text = "Введите имя пользователя или выберите из списка:",
+                AutoSize = true
+            };
+
+            System.Windows.Forms.ComboBox comboBox = new System.Windows.Forms.ComboBox()
+            {
+                Left = 10,
+                Top = 35,
+                Width = 310,
+                DropDownStyle = ComboBoxStyle.DropDown,
+                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+                AutoCompleteSource = AutoCompleteSource.ListItems,
+                ForeColor = Color.Gray,
+                Text = "Поиск..."
+            };
+
+            comboBox.Items.AddRange(filteredUsers.ToArray());
+
+            comboBox.GotFocus += (s, e) =>
+            {
+                if (comboBox.Text == "Поиск...")
+                {
+                    comboBox.Text = "";
+                    comboBox.ForeColor = Color.Black;
+                }
+            };
+
+            comboBox.LostFocus += (s, e) =>
+            {
+                if (string.IsNullOrWhiteSpace(comboBox.Text))
+                {
+                    comboBox.Text = "Поиск...";
+                    comboBox.ForeColor = Color.Gray;
+                }
+            };
+
+            System.Windows.Forms.Button confirmation = new System.Windows.Forms.Button()
+            {
+                Text = "OK",
+                Left = 180,
+                Width = 65,
+                Top = 75,
+                DialogResult = DialogResult.OK
+            };
+
+            System.Windows.Forms.Button cancel = new System.Windows.Forms.Button()
+            {
+                Text = "Отмена",
+                Left = 255,
+                Width = 65,
+                Top = 75,
+                DialogResult = DialogResult.Cancel
+            };
+
+            prompt.Controls.Add(label);
+            prompt.Controls.Add(comboBox);
+            prompt.Controls.Add(confirmation);
+            prompt.Controls.Add(cancel);
+            prompt.AcceptButton = confirmation;
+            prompt.CancelButton = cancel;
+
+            if (prompt.ShowDialog() == DialogResult.OK)
+            {
+                string selected = comboBox.Text.Trim();
+                if (filteredUsers.Contains(selected))
+                    return selected;
+            }
+
+            return null;
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            string searchText = textBox1.Text.Trim();
+
+            // Проверка на пустоту DataGridView
+            if (dataGridView1.Rows.Count == 0)
+            {
+                MessageBox.Show("Таблица пуста, поиск невозможен", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // Проверка на пустое значение в поле ввода
+            if (string.IsNullOrEmpty(searchText))
+            {
+                MessageBox.Show("Пожалуйста, введите имя пользователя для поиска!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            bool userFound = false;
+
+            // Проходим по всем строкам и ищем имя в столбце "Отправитель"
+            foreach (DataGridViewRow row in dataGridView1.Rows)
+            {
+                if (row.Cells["sender"].Value != null && row.Cells["sender"].Value.ToString().Equals(searchText, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Пользователь найден, выделяем ячейки в столбце "Отправитель"
+                    row.Cells["sender"].Style.BackColor = Color.Yellow;
+                    userFound = true;
+                }
+                else
+                {
+                    // Если строка не содержит имя пользователя, сбрасываем выделение
+                    row.Cells["sender"].Style.BackColor = Color.White;
+                }
+            }
+
+            if (!userFound)
+            {
+                MessageBox.Show("Пользователь не найден в таблице", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                // Перемещаем на первую строку с найденным отправителем
+                foreach (DataGridViewRow row in dataGridView1.Rows)
+                {
+                    if (row.Cells["sender"].Style.BackColor == Color.Yellow)
+                    {
+                        dataGridView1.FirstDisplayedScrollingRowIndex = row.Index;
+                        break;
+                    }
+                }
+            }
+        }
+
+
 
         //private void MarkMessageAsRead(int messageId)
         //{
