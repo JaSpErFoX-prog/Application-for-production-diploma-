@@ -49,6 +49,7 @@
             this.label1.Size = new System.Drawing.Size(59, 25);
             this.label1.TabIndex = 2;
             this.label1.Text = "Кому:";
+            this.label1.Visible = false;
             // 
             // label2
             // 
@@ -89,6 +90,7 @@
             this.comboBox1.Size = new System.Drawing.Size(326, 26);
             this.comboBox1.TabIndex = 9;
             this.comboBox1.Text = "Выберите кому отправить";
+            this.comboBox1.Visible = false;
             // 
             // textBox1
             // 
@@ -116,6 +118,7 @@
             this.button1.TabIndex = 12;
             this.button1.Text = "Отправить";
             this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
             // button2
             // 
@@ -126,6 +129,7 @@
             this.button2.TabIndex = 13;
             this.button2.Text = "Выход";
             this.button2.UseVisualStyleBackColor = true;
+            this.button2.Click += new System.EventHandler(this.button2_Click);
             // 
             // richTextBox1
             // 
@@ -151,7 +155,7 @@
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
             this.Name = "Form8";
-            this.Text = "ОТПРАВКА ПИСЬМА 2";
+            this.Text = "ОТПРАВИТЬ ПИСЬМО ВСЕМ";
             this.Load += new System.EventHandler(this.Form8_Load);
             this.ResumeLayout(false);
             this.PerformLayout();

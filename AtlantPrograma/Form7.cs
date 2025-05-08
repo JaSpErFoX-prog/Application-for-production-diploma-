@@ -82,7 +82,7 @@ namespace AtlantPrograma
                         MessageBox.Show("Ошибка при проверке изменений черновика: " + ex.Message);
                     }
 
-                    if (hasChanges)
+                    if (hasChanges && comboBox1.Text!="Поиск...")
                     {
                         DialogResult result = MessageBox.Show(
                             "Вы внесли изменения в черновик. Сохранить их?",

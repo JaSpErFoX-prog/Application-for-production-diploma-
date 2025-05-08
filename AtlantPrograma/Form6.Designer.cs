@@ -42,6 +42,7 @@
             this.поместитьВКорзинуToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.пометитьКакПрочитанноеToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.восстановитьПрочитанноеToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.переслатьСообщенияToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.действияСКорзинойToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.восстановитьПомеченноеToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.восстановитьВсёToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
@@ -59,9 +60,8 @@
             this.ответитьToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.contextMenuStrip2 = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.ответитьToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
-            this.button8 = new System.Windows.Forms.Button();
             this.прочитатьToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
-            this.переслатьСообщенияToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.button8 = new System.Windows.Forms.Button();
             this.panel1.SuspendLayout();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
@@ -179,6 +179,7 @@
             this.отправитьВсемToolStripMenuItem1.Name = "отправитьВсемToolStripMenuItem1";
             this.отправитьВсемToolStripMenuItem1.Size = new System.Drawing.Size(284, 26);
             this.отправитьВсемToolStripMenuItem1.Text = "Отправить всем";
+            this.отправитьВсемToolStripMenuItem1.Click += new System.EventHandler(this.отправитьВсемToolStripMenuItem1_Click);
             // 
             // поместитьВКорзинуToolStripMenuItem
             // 
@@ -199,6 +200,13 @@
             this.восстановитьПрочитанноеToolStripMenuItem.Name = "восстановитьПрочитанноеToolStripMenuItem";
             this.восстановитьПрочитанноеToolStripMenuItem.Size = new System.Drawing.Size(284, 26);
             this.восстановитьПрочитанноеToolStripMenuItem.Text = "Восстановить прочитанное";
+            // 
+            // переслатьСообщенияToolStripMenuItem
+            // 
+            this.переслатьСообщенияToolStripMenuItem.Name = "переслатьСообщенияToolStripMenuItem";
+            this.переслатьСообщенияToolStripMenuItem.Size = new System.Drawing.Size(284, 26);
+            this.переслатьСообщенияToolStripMenuItem.Text = "Переслать сообщения";
+            this.переслатьСообщенияToolStripMenuItem.Click += new System.EventHandler(this.переслатьСообщенияToolStripMenuItem_Click);
             // 
             // действияСКорзинойToolStripMenuItem
             // 
@@ -319,14 +327,14 @@
             // прочитатьToolStripMenuItem
             // 
             this.прочитатьToolStripMenuItem.Name = "прочитатьToolStripMenuItem";
-            this.прочитатьToolStripMenuItem.Size = new System.Drawing.Size(210, 24);
+            this.прочитатьToolStripMenuItem.Size = new System.Drawing.Size(152, 24);
             this.прочитатьToolStripMenuItem.Text = "Прочитать";
             this.прочитатьToolStripMenuItem.Click += new System.EventHandler(this.прочитатьToolStripMenuItem_Click);
             // 
             // ответитьToolStripMenuItem
             // 
             this.ответитьToolStripMenuItem.Name = "ответитьToolStripMenuItem";
-            this.ответитьToolStripMenuItem.Size = new System.Drawing.Size(210, 24);
+            this.ответитьToolStripMenuItem.Size = new System.Drawing.Size(152, 24);
             this.ответитьToolStripMenuItem.Text = "Ответить";
             this.ответитьToolStripMenuItem.Click += new System.EventHandler(this.ответитьToolStripMenuItem_Click);
             // 
@@ -337,14 +345,21 @@
             this.ответитьToolStripMenuItem1,
             this.прочитатьToolStripMenuItem1});
             this.contextMenuStrip2.Name = "contextMenuStrip2";
-            this.contextMenuStrip2.Size = new System.Drawing.Size(153, 52);
+            this.contextMenuStrip2.Size = new System.Drawing.Size(211, 80);
             // 
             // ответитьToolStripMenuItem1
             // 
             this.ответитьToolStripMenuItem1.Name = "ответитьToolStripMenuItem1";
-            this.ответитьToolStripMenuItem1.Size = new System.Drawing.Size(151, 24);
+            this.ответитьToolStripMenuItem1.Size = new System.Drawing.Size(210, 24);
             this.ответитьToolStripMenuItem1.Text = "Ответить";
             this.ответитьToolStripMenuItem1.Click += new System.EventHandler(this.ответитьToolStripMenuItem1_Click);
+            // 
+            // прочитатьToolStripMenuItem1
+            // 
+            this.прочитатьToolStripMenuItem1.Name = "прочитатьToolStripMenuItem1";
+            this.прочитатьToolStripMenuItem1.Size = new System.Drawing.Size(210, 24);
+            this.прочитатьToolStripMenuItem1.Text = "Прочитать";
+            this.прочитатьToolStripMenuItem1.Click += new System.EventHandler(this.прочитатьToolStripMenuItem1_Click);
             // 
             // button8
             // 
@@ -356,19 +371,6 @@
             this.button8.Text = "Выход";
             this.button8.UseVisualStyleBackColor = true;
             this.button8.Click += new System.EventHandler(this.button8_Click);
-            // 
-            // прочитатьToolStripMenuItem1
-            // 
-            this.прочитатьToolStripMenuItem1.Name = "прочитатьToolStripMenuItem1";
-            this.прочитатьToolStripMenuItem1.Size = new System.Drawing.Size(152, 24);
-            this.прочитатьToolStripMenuItem1.Text = "Прочитать";
-            // 
-            // переслатьСообщенияToolStripMenuItem
-            // 
-            this.переслатьСообщенияToolStripMenuItem.Name = "переслатьСообщенияToolStripMenuItem";
-            this.переслатьСообщенияToolStripMenuItem.Size = new System.Drawing.Size(284, 26);
-            this.переслатьСообщенияToolStripMenuItem.Text = "Переслать сообщения";
-            this.переслатьСообщенияToolStripMenuItem.Click += new System.EventHandler(this.переслатьСообщенияToolStripMenuItem_Click);
             // 
             // Form6
             // 

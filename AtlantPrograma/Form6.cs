@@ -1823,6 +1823,197 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
             }
         }
 
+        private void отправитьВсемToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            List<string> selectedDepartments = ShowDepartmentSelectDialog(currentUser);
+            if (selectedDepartments != null && selectedDepartments.Count > 0)
+            {
+                Form8 form8 = new Form8(currentUser, selectedDepartments);
+                form8.ShowDialog();
+            }
+        }
+
+        private List<string> ShowDepartmentSelectDialog(string senderUsername)
+        {
+            List<string> departmentNames = new List<string>();
+
+            // Подгружаем список отделов из БД
+            try
+            {
+                using (MySqlConnection con = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                {
+                    con.Open();
+                    using (MySqlCommand cmd = new MySqlCommand("SELECT name FROM departments ORDER BY name", con))
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            departmentNames.Add(reader.GetString("name"));
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при загрузке отделов: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
+
+            if (departmentNames.Count == 0)
+            {
+                MessageBox.Show("Нет доступных отделов", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return null;
+            }
+
+            // Создаём мини-форму
+            Form prompt = new Form()
+            {
+                Width = 370,
+                Height = 300,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                Text = "Выбор отделов",
+                StartPosition = FormStartPosition.CenterParent,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            Label label = new Label()
+            {
+                Left = 10,
+                Top = 10,
+                Text = "Отметьте один или несколько отделов:",
+                AutoSize = true
+            };
+
+            CheckedListBox checkedListBox = new CheckedListBox()
+            {
+                Left = 10,
+                Top = 35,
+                Width = 330,
+                Height = 180
+            };
+            checkedListBox.Items.AddRange(departmentNames.ToArray());
+
+            System.Windows.Forms.Button buttonOk = new System.Windows.Forms.Button()
+            {
+                Text = "OK",
+                Left = 170,
+                Width = 80,
+                Top = 230
+            };
+
+            System.Windows.Forms.Button buttonCancel = new System.Windows.Forms.Button()
+            {
+                Text = "Отмена",
+                Left = 260,
+                Width = 80,
+                Top = 230,
+                DialogResult = DialogResult.Cancel
+            };
+
+            List<string> selectedDepartments = null;
+
+            buttonOk.Click += (sender, e) =>
+            {
+                var selected = checkedListBox.CheckedItems.Cast<string>().ToList();
+                if (selected.Count == 0)
+                {
+                    MessageBox.Show("Пожалуйста, выберите хотя бы один отдел", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Проверка наличия хотя бы одного пользователя в выбранных отделах
+                try
+                {
+                    using (MySqlConnection con = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                    {
+                        con.Open();
+                        bool hasUsers = false;
+                        foreach (string dept in selected)
+                        {
+                            using (var cmd = new MySqlCommand(@"
+                        SELECT COUNT(*) 
+                        FROM users u 
+                        JOIN user_details d ON u.id = d.user_id 
+                        JOIN departments dep ON dep.id = d.department_id 
+                        WHERE dep.name = @name AND u.username != @sender", con))
+                            {
+                                cmd.Parameters.AddWithValue("@name", dept);
+                                cmd.Parameters.AddWithValue("@sender", senderUsername);
+                                long count = (long)cmd.ExecuteScalar();
+                                if (count > 0)
+                                {
+                                    hasUsers = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!hasUsers)
+                        {
+                            MessageBox.Show("Нет доступных получателей в выбранных отделах", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            return;
+                        }
+
+                        selectedDepartments = selected;
+                        prompt.DialogResult = DialogResult.OK;
+                        prompt.Close();
+                    }
+                }
+                catch (Exception exCheck)
+                {
+                    MessageBox.Show("Ошибка при проверке отделов: " + exCheck.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
+
+            prompt.Controls.Add(label);
+            prompt.Controls.Add(checkedListBox);
+            prompt.Controls.Add(buttonOk);
+            prompt.Controls.Add(buttonCancel);
+            prompt.AcceptButton = buttonOk;
+            prompt.CancelButton = buttonCancel;
+
+            var result = prompt.ShowDialog();
+            return result == DialogResult.OK ? selectedDepartments : null;
+        }
+
+        private void прочитатьToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            if (dataGridView1.SelectedRows.Count > 0)
+            {
+                string senderUsername = dataGridView1.SelectedRows[0].Cells["sender"].Value.ToString();
+                string subject = dataGridView1.SelectedRows[0].Cells["subject"].Value.ToString();
+
+                using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                {
+                    conn.Open();
+
+                    // Считываем тело письма без условия is_read = 0
+                    string query = "SELECT body FROM messages WHERE sender = @sender AND recipient = @recipient AND subject = @subject LIMIT 1";
+                    MySqlCommand cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@sender", senderUsername);
+                    cmd.Parameters.AddWithValue("@recipient", currentUser);
+                    cmd.Parameters.AddWithValue("@subject", subject);
+
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            string body = reader.GetString("body");
+
+                            Form7 readForm = new Form7(currentUser);
+                            readForm.LoadReadOnlyMessage(subject, body, senderUsername);
+                            readForm.ShowDialog();
+                        }
+                        else
+                        {
+                            MessageBox.Show("Не удалось загрузить текст сообщения", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                }
+            }
+        }
+
 
 
         //private void MarkMessageAsRead(int messageId)
