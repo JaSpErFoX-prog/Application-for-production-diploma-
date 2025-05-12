@@ -2014,8 +2014,6 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
             }
         }
 
-
-
         //private void MarkMessageAsRead(int messageId)
         //{
         //    try

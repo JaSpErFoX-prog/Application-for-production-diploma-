@@ -3,13 +3,15 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-
 namespace AtlantPrograma
 {
     public partial class Form7 : Form
@@ -446,7 +448,24 @@ namespace AtlantPrograma
 
                         cmd.ExecuteNonQuery();
                         insertedMessageId = cmd.LastInsertedId; // Вот здесь мы получаем ID
-                    }               
+
+                        foreach (var file in attachedFiles)
+                        {
+                            string insertDocQuery = "INSERT INTO documents (message_id, filename, filedata, filetype, is_signed, is_draft) " +
+                                                    "VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0)";
+
+                            using (MySqlCommand docCmd = new MySqlCommand(insertDocQuery, conn))
+                            {
+                                docCmd.Parameters.AddWithValue("@messageId", insertedMessageId);
+                                docCmd.Parameters.AddWithValue("@filename", file.fileName);
+                                docCmd.Parameters.AddWithValue("@filedata", file.fileData);
+                                docCmd.Parameters.AddWithValue("@filetype", file.fileType);
+                                docCmd.Parameters.AddWithValue("@isSigned", checkBox1.Checked); // если стоит галочка Подписать
+                                docCmd.ExecuteNonQuery();
+                            }
+                        }
+
+                    }
 
                     bool isFromRead = false;
 
@@ -701,6 +720,89 @@ WHERE id = @draftId";
             // Курсор ставим в самое начало
             richTextBox1.SelectionStart = 0;
             richTextBox1.ScrollToCaret();
+        }
+
+        private List<(string fileName, byte[] fileData, string fileType)> attachedFiles = new List<(string, byte[], string)>();
+
+        private void pictureBox1_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog openFileDialog1 = new OpenFileDialog
+            {
+                Multiselect = true,
+                Title = "Выберите документы для прикрепления",
+                Filter = "Документы (*.doc;*.docx;*.xls;*.xlsx;*.pdf)|*.doc;*.docx;*.xls;*.xlsx;*.pdf"
+            };
+
+            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                string[] allowedExtensions = { ".doc", ".docx", ".xls", ".xlsx", ".pdf" };
+
+                foreach (string file in openFileDialog1.FileNames)
+                {
+                    string extension = Path.GetExtension(file).ToLower();
+
+                    if (!allowedExtensions.Contains(extension))
+                    {
+                        MessageBox.Show("Файл \"" + Path.GetFileName(file) + "\" имеет недопустимый формат и не будет добавлен!",
+                            "Недопустимый формат", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        continue;
+                    }
+
+                    byte[] fileBytes = File.ReadAllBytes(file);
+                    string fileName = Path.GetFileName(file);
+
+                    attachedFiles.Add((fileName, fileBytes, extension));
+                    comboBox3.Items.Add(fileName);
+                }
+            }
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        private const int SW_MAXIMIZE = 3;
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            if (comboBox3.SelectedItem == null)
+            {
+                MessageBox.Show("Выберите документ для предварительного просмотра",
+                    "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            string selectedFileName = comboBox3.SelectedItem.ToString();
+            var file = attachedFiles.FirstOrDefault(f => f.fileName == selectedFileName);
+
+            if (file.fileData == null)
+            {
+                MessageBox.Show("Файл не найден",
+                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            string tempPath = Path.Combine(Path.GetTempPath(), selectedFileName);
+            File.WriteAllBytes(tempPath, file.fileData);
+
+            try
+            {
+                Process process = new Process();
+                process.StartInfo.FileName = tempPath;
+                process.StartInfo.UseShellExecute = true;
+                process.Start();
+
+                // через пару секунд попытка развернуть окно (для Windows)
+                Task.Delay(1000).ContinueWith(_ =>
+                {
+                    IntPtr hWnd = process.MainWindowHandle;
+                    if (hWnd != IntPtr.Zero)
+                        ShowWindow(hWnd, SW_MAXIMIZE);
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при открытии файла: " + ex.Message,
+                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
     }
 }
