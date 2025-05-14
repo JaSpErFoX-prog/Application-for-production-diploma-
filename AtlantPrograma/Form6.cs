@@ -72,6 +72,12 @@ namespace AtlantPrograma
         private void button4_Click(object sender, EventArgs e)
         {
             Form7 sendMail = new Form7(currentUser);
+            sendMail.действияСДокументамиToolStripMenuItem.Enabled = true;
+            sendMail.предварительныйПросмотрДокументовToolStripMenuItem.Enabled = true;
+            sendMail.скачатьВсеДокументыToolStripMenuItem.Enabled = false;
+            sendMail.просмотретьДокументыToolStripMenuItem.Enabled = false;
+            sendMail.сброситьИзмененияВДокументахToolStripMenuItem.Enabled = true;
+            sendMail.очиститьСписокПрикреплённыхСообщенийToolStripMenuItem.Enabled = true;
             sendMail.ShowDialog();
         }
 
@@ -1451,9 +1457,6 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
                     originalTime: originalTime,
                     messageId: messageId
                 );
-
-                // Помечаем оригинальное письмо как прочитанное
-                //MarkMessageAsRead(messageId);
 
                 replyForm.Show();
             }
