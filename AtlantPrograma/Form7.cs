@@ -17,11 +17,13 @@ namespace AtlantPrograma
 {
     public partial class Form7 : Form
     {
+        private int CurrentsmessageId = -1; // -1 — значит новое сообщение, ещё без ID
         private string senderUser;
-        public Form7(string sender)
+        public Form7(string sender, int messageId = -1)
         {
             InitializeComponent();
             senderUser = sender;
+            CurrentsmessageId = messageId;
             comboBox1.Text = "Поиск...";
             comboBox1.ForeColor = Color.Gray;
             LoadRecipients();
@@ -30,24 +32,24 @@ namespace AtlantPrograma
             //comboBox1.Enter += comboBox1_Enter;
             //comboBox1.Leave += comboBox1_Leave;
             //comboBox1.TextChanged += comboBox1_TextChanged;
-            this.FormClosing += FormMessages_FormClosing;
+           // this.FormClosing += FormMessages_FormClosing;
 
         }
-        private void FormMessages_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            foreach (var path in cachedPaths.Values)
-            {
-                try
-                {
-                    if (File.Exists(path))
-                        File.Delete(path);
-                }
-                catch
-                {
-                    // Можно залогировать ошибку или просто проигнорировать
-                }
-            }
-        }
+        //private void FormMessages_FormClosing(object sender, FormClosingEventArgs e)
+        //{
+        //    foreach (var path in cachedPaths.Values)
+        //    {
+        //        try
+        //        {
+        //            if (File.Exists(path))
+        //                File.Delete(path);
+        //        }
+        //        catch
+        //        {
+        //            // Можно залогировать ошибку или просто проигнорировать
+        //        }
+        //    }
+        //}
 
         private bool isReadOnlyMode = false;
 
@@ -484,41 +486,10 @@ namespace AtlantPrograma
 
                         cmd.ExecuteNonQuery();
                         insertedMessageId = cmd.LastInsertedId; // Вот здесь мы получаем ID
+                        CurrentsmessageId = (int)cmd.LastInsertedId;  // сохраняем ID в поле формы
 
                         foreach (var file in attachedFiles)
                         {
-                            string tempPath = Path.Combine(Path.GetTempPath(), $"{file.id}_{file.fileName}");
-                            byte[] fileDataToStore;
-
-                            if (File.Exists(tempPath))
-                            {
-                                DateTime fileModified = File.GetLastWriteTime(tempPath);
-
-                                // Если файл был изменён позже, чем старт приложения — считаем как редактированный
-                                if (fileModified > Process.GetCurrentProcess().StartTime)
-                                {
-                                    try
-                                    {
-                                        fileDataToStore = File.ReadAllBytes(tempPath);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        MessageBox.Show($"Не удалось прочитать изменённый файл \"{file.fileName}\". " +
-                                                        $"Будет использована исходная версия\n\nОшибка: {ex.Message}",
-                                                        "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                                        fileDataToStore = file.fileData;
-                                    }
-                                }
-                                else
-                                {
-                                    fileDataToStore = file.fileData;
-                                }
-                            }
-                            else
-                            {
-                                fileDataToStore = file.fileData;
-                            }
-
                             string insertDocQuery = "INSERT INTO documents (message_id, filename, filedata, filetype, is_signed, is_draft) " +
                                                     "VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0)";
 
@@ -526,13 +497,12 @@ namespace AtlantPrograma
                             {
                                 docCmd.Parameters.AddWithValue("@messageId", insertedMessageId);
                                 docCmd.Parameters.AddWithValue("@filename", file.fileName);
-                                docCmd.Parameters.AddWithValue("@filedata", fileDataToStore);
+                                docCmd.Parameters.AddWithValue("@filedata", file.fileData); // уже актуальные данные
                                 docCmd.Parameters.AddWithValue("@filetype", file.fileType);
                                 docCmd.Parameters.AddWithValue("@isSigned", checkBox1.Checked);
                                 docCmd.ExecuteNonQuery();
                             }
                         }
-
                     }
 
                     bool isFromRead = false;
@@ -992,15 +962,6 @@ WHERE id = @draftId";
                 return;
             }
 
-            var warn = MessageBox.Show(
-                "Вы собираетесь открыть документы в режиме предварительного просмотра. " +
-                "Если выбрать сразу несколько, это может повлиять на производительность! Продолжить?",
-                "Предупреждение", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-
-            if (warn != DialogResult.Yes)
-                return;
-
-            // Новый метод, возвращающий список ID
             List<int> selectedIds = ShowDocumentSelectionDialogWithIds(attachedFiles);
 
             if (selectedIds == null || selectedIds.Count == 0)
@@ -1015,32 +976,90 @@ WHERE id = @draftId";
                     continue;
                 }
 
-                string tempPath;
-
-                if (cachedPaths.ContainsKey(file.id) && File.Exists(cachedPaths[file.id]))
-                {
-                    tempPath = cachedPaths[file.id];
-                }
-                else
-                {
-                    tempPath = Path.Combine(Path.GetTempPath(), $"{file.id}_{file.fileName}");
-                    File.WriteAllBytes(tempPath, file.fileData);
-                    cachedPaths[file.id] = tempPath;
-                }
-
                 try
                 {
+                    // Обновим fileData из базы перед открытием
+                    string connectionString = "server=localhost;user=root;password=1111;database=document_system;";
+                    using (var conn = new MySqlConnection(connectionString))
+                    {
+                        conn.Open();
+                        string selectQuery = "SELECT filedata FROM documents WHERE id = @id";
+                        using (var cmd = new MySqlCommand(selectQuery, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@id", file.id);
+                            using (var reader = cmd.ExecuteReader())
+                            {
+                                if (reader.Read())
+                                {
+                                    file.fileData = (byte[])reader["filedata"];
+                                }
+                                else
+                                {
+                                    MessageBox.Show($"Не удалось загрузить файл с ID {file.id} из базы данных",
+                                        "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+
+                    // Создаём временный файл
+                    string tempFileName = $"{Guid.NewGuid()}_{file.fileName}";
+                    string tempPath = Path.Combine(Path.GetTempPath(), tempFileName);
+                    File.WriteAllBytes(tempPath, file.fileData);
+                    DateTime originalWriteTime = File.GetLastWriteTime(tempPath);
+
                     Process process = new Process();
                     process.StartInfo.FileName = tempPath;
                     process.StartInfo.UseShellExecute = true;
-                    process.Start();
+                    process.EnableRaisingEvents = true;
 
-                    Task.Delay(1000).ContinueWith(_ =>
+                    process.Exited += (s, ev) =>
                     {
-                        IntPtr hWnd = process.MainWindowHandle;
-                        if (hWnd != IntPtr.Zero)
-                            ShowWindow(hWnd, SW_MAXIMIZE);
-                    });
+                        if (File.Exists(tempPath))
+                        {
+                            DateTime newWriteTime = File.GetLastWriteTime(tempPath);
+                            if (newWriteTime > originalWriteTime)
+                            {
+                                try
+                                {
+                                    byte[] updatedData = File.ReadAllBytes(tempPath);
+
+                                    using (var conn = new MySqlConnection(connectionString))
+                                    {
+                                        conn.Open();
+                                        string updateQuery = "UPDATE documents SET filedata = @filedata WHERE id = @id";
+                                        using (var cmd = new MySqlCommand(updateQuery, conn))
+                                        {
+                                            cmd.Parameters.AddWithValue("@filedata", updatedData);
+                                            cmd.Parameters.AddWithValue("@id", file.id);
+                                            cmd.ExecuteNonQuery();
+                                        }
+                                    }
+
+                                    file.fileData = updatedData; // обновляем в памяти
+                                    Invoke(new Action(UpdateComboBox3));
+                                }
+                                catch (Exception ex)
+                                {
+                                    MessageBox.Show($"Не удалось сохранить изменения файла: {ex.Message}",
+                                        "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                }
+                            }
+
+                            try
+                            {
+                                File.Delete(tempPath);
+                            }
+                            catch (Exception ex)
+                            {
+                                MessageBox.Show($"Не удалось удалить временный файл: {ex.Message}",
+                                    "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            }
+                        }
+                    };
+
+                    process.Start();
                 }
                 catch (Exception ex)
                 {
@@ -1048,7 +1067,41 @@ WHERE id = @draftId";
                         "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
+
+            Task.Run(() => CleanOldTempFiles()); // Очистка Temp в фоне         
         }
+
+        private void CleanOldTempFiles()
+        {
+            string tempDir = Path.GetTempPath();
+            var files = Directory.GetFiles(tempDir, "*_*");
+
+            foreach (var file in files)
+            {
+                try
+                {
+                    DateTime lastAccess = File.GetLastAccessTime(file);
+                    if ((DateTime.Now - lastAccess).TotalHours > 2) // старше 2 часов
+                    {
+                        File.Delete(file);
+                    }
+                }
+                catch { /* Пропускаем ошибки */ }
+            }
+        }
+
+        private void UpdateComboBox3()
+        {
+            comboBox3.Items.Clear();
+            foreach (var file in attachedFiles)
+            {
+                comboBox3.Items.Add(file.fileName);
+            }
+
+            if (comboBox3.Items.Count > 0)
+                comboBox3.SelectedIndex = 0;
+        }
+
 
         private List<int> ShowDocumentSelectionDialogWithIds(List<(int id, string fileName, byte[] fileData, string fileType, string fileHash)> files)
         {
@@ -1109,20 +1162,22 @@ WHERE id = @draftId";
         }
 
         // Функция для форматирования размера файла в читаемый вид
-        private string FormatFileSize(long fileSize)
-        {
-            if (fileSize < 1024)
-                return $"{fileSize} байт";
-            else if (fileSize < 1024 * 1024)
-                return $"{fileSize / 1024} КБ";
-            else
-                return $"{fileSize / (1024 * 1024)} МБ";
-        }
+        //private string FormatFileSize(long fileSize)
+        //{
+        //    if (fileSize < 1024)
+        //        return $"{fileSize} байт";
+        //    else if (fileSize < 1024 * 1024)
+        //        return $"{fileSize / 1024} КБ";
+        //    else
+        //        return $"{fileSize / (1024 * 1024)} МБ";
+        //}
 
 
 
         private void просмотретьДокументыToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            Task.Run(() => CleanOldTempFiles()); // Очистка Temp в фоне
+
             if (attachedFiles.Count == 0)
             {
                 MessageBox.Show("Нет документов для просмотра",
@@ -1262,43 +1317,64 @@ WHERE id = @draftId";
             }
         }
 
+        //private int CurrentsmessageId; // должна быть в твоём классе, ты явно где-то уже её задаёшь при ответе/редактировании
+
         private void сброситьИзмененияВДокументахToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (cachedPaths.Count == 0)
-            {
-                MessageBox.Show("Нет изменённых документов для сброса",
-                    "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
             var confirm = MessageBox.Show(
-                "Вы уверены, что хотите сбросить внесённые изменения в документ(ы)?\n" +
-                "После этого будет использована исходная версия с вашего компьютера",
-                "Подтверждение сброса", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+        "Вы уверены, что хотите сбросить изменения?\n" +
+        "Документы будут загружены заново с вашего компьютера",
+        "Подтверждение сброса", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
             if (confirm != DialogResult.Yes)
                 return;
 
-            int removedCount = 0;
-
-            foreach (var path in cachedPaths.Values.ToList()) // копируем список, чтобы не изменять коллекцию во время перебора
+            try
             {
-                try
+                //int currentMessageId = currentMessageIdForEditing; // замени на свою переменную ID редактируемого сообщения
+
+                attachedFiles = LoadDocumentsFromDatabase(CurrentsmessageId); // загружаем актуальные документы
+                UpdateComboBox3(); // обновляем список документов
+
+                MessageBox.Show("Изменения сброшены, документы загружены заново",
+                    "Готово", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при сбросе изменений: {ex.Message}",
+                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private List<(int id, string fileName, byte[] fileData, string fileType, string fileHash)>
+    LoadDocumentsFromDatabase(int messageId)
+        {
+            var result = new List<(int, string, byte[], string, string)>();
+
+            using (var conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            {
+                conn.Open();
+                string query = "SELECT id, filename, filedata, filetype FROM documents WHERE message_id = @messageId";
+                using (var cmd = new MySqlCommand(query, conn))
                 {
-                    if (File.Exists(path))
-                        File.Delete(path);
-                    removedCount++;
-                }
-                catch
-                {
-                    // Пропустить ошибки удаления, чтобы не прерывать процесс
+                    cmd.Parameters.AddWithValue("@messageId", messageId);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            result.Add((
+                                reader.GetInt32("id"),
+                                reader.GetString("filename"),
+                                (byte[])reader["filedata"],
+                                reader.GetString("filetype"),
+                                "" // пустой fileHash, которого нет в БД
+                            ));
+                        }
+                    }
                 }
             }
 
-            cachedPaths.Clear();
-
-            MessageBox.Show($"Изменения сброшены для {removedCount} документа(ов)",
-                "Готово", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return result;
         }
 
         private void очиститьСписокПрикреплённыхСообщенийToolStripMenuItem_Click(object sender, EventArgs e)

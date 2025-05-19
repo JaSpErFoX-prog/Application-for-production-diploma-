@@ -1445,7 +1445,7 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
 
                 string originalBody = GetMessageBodyById(messageId); // <-- получаем текст через отдельный метод
 
-                Form7 replyForm = new Form7(currentUser); // currentUser — это тот, кто отвечает
+                Form7 replyForm = new Form7(currentUser, messageId); // currentUser — это тот, кто отвечает
 
                 // Устанавливаем получателя, тему и оригинальный текст
                 replyForm.SetReplyMode(
