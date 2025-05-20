@@ -158,6 +158,7 @@ namespace AtlantPrograma
                     else if (saveDraft == DialogResult.No)
                     {
                         this.Close();
+                        Task.Run(() => CleanOldTempDocuments());
                     }
                 }
                 else if (hasRecipient && hasSubject && hasBody)
@@ -215,6 +216,7 @@ namespace AtlantPrograma
                     else if (saveDraft == DialogResult.No)
                     {
                         this.Close();
+                        Task.Run(() => CleanOldTempDocuments());
                     }
                 }
                 else
@@ -410,6 +412,8 @@ namespace AtlantPrograma
 
         private void button1_Click(object sender, EventArgs e)
         {
+            //Task.Run(() => CleanOldTempDocuments());
+
             if (checkBox1.Checked)
             {
                 string[] allowedExtensions = { ".doc", ".docx", ".xls", ".xlsx", ".pdf" };
@@ -488,7 +492,43 @@ namespace AtlantPrograma
                         insertedMessageId = cmd.LastInsertedId; // Вот здесь мы получаем ID
                         CurrentsmessageId = (int)cmd.LastInsertedId;  // сохраняем ID в поле формы
 
+
+                        // ⬇️ Новый блок обработки файлов — вставить сюда ⬇️
+                        string tempDocumentsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TempDocuments");
+
+                        List<(int id, string fileName, byte[] fileData, string fileType, string fileHash)> updatedFiles =
+                            new List<(int, string, byte[], string, string)>();
+
+
                         foreach (var file in attachedFiles)
+                        {
+                            byte[] actualData = null;
+
+                            // Пытаемся взять актуальные данные из временного файла, если он есть
+                            if (tempDocumentPaths.TryGetValue(file.fileHash, out string tempPath) && File.Exists(tempPath))
+                            {
+                                try
+                                {
+                                    actualData = File.ReadAllBytes(tempPath);
+                                }
+                                catch (Exception ex)
+                                {
+                                    MessageBox.Show($"Ошибка при чтении файла {file.fileName} из TempDocuments: {ex.Message}",
+                                        "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    actualData = file.fileData; // fallback
+                                }
+                            }
+                            else
+                            {
+                                // Нет изменённого файла во временных — используем данные из объекта
+                                actualData = file.fileData;
+                            }
+
+                            updatedFiles.Add((file.id, file.fileName, actualData, file.fileType, file.fileHash));
+                        }
+
+                        // Теперь вставляем все файлы с актуальными данными в базу
+                        foreach (var file in updatedFiles)
                         {
                             string insertDocQuery = "INSERT INTO documents (message_id, filename, filedata, filetype, is_signed, is_draft) " +
                                                     "VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0)";
@@ -497,13 +537,86 @@ namespace AtlantPrograma
                             {
                                 docCmd.Parameters.AddWithValue("@messageId", insertedMessageId);
                                 docCmd.Parameters.AddWithValue("@filename", file.fileName);
-                                docCmd.Parameters.AddWithValue("@filedata", file.fileData); // уже актуальные данные
+                                docCmd.Parameters.AddWithValue("@filedata", file.fileData);
                                 docCmd.Parameters.AddWithValue("@filetype", file.fileType);
                                 docCmd.Parameters.AddWithValue("@isSigned", checkBox1.Checked);
                                 docCmd.ExecuteNonQuery();
                             }
                         }
+
+                        //foreach (var file in attachedFiles)
+                        //{
+                        //    byte[] actualData = null;
+
+                        //    if (file.id > 0)
+                        //    {
+                        //        string selectQuery = "SELECT filedata FROM documents WHERE id = @docId LIMIT 1";
+                        //        using (MySqlCommand selectCmd = new MySqlCommand(selectQuery, conn))
+                        //        {
+                        //            selectCmd.Parameters.AddWithValue("@docId", file.id);
+                        //            using (MySqlDataReader reader = selectCmd.ExecuteReader())
+                        //            {
+                        //                if (reader.Read())
+                        //                {
+                        //                    actualData = (byte[])reader["filedata"];
+                        //                }
+                        //            }
+                        //        }
+                        //    }
+                        //    else
+                        //    {
+                        //        string tempPath = Path.Combine(tempDocumentsDir, file.fileName);
+                        //        if (File.Exists(tempPath))
+                        //        {
+                        //            try
+                        //            {
+                        //                actualData = File.ReadAllBytes(tempPath);
+                        //            }
+                        //            catch (Exception ex)
+                        //            {
+                        //                MessageBox.Show($"Ошибка при чтении файла {file.fileName} из TempDocuments: {ex.Message}",
+                        //                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        //            }
+                        //        }
+                        //    }
+
+                        //    updatedFiles.Add((file.id, file.fileName, actualData ?? file.fileData, file.fileType, file.fileHash));
+                        //}
+
+                        //foreach (var file in updatedFiles)
+                        //{
+                        //    string insertDocQuery = "INSERT INTO documents (message_id, filename, filedata, filetype, is_signed, is_draft) " +
+                        //                            "VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0)";
+
+                        //    using (MySqlCommand docCmd = new MySqlCommand(insertDocQuery, conn))
+                        //    {
+                        //        docCmd.Parameters.AddWithValue("@messageId", insertedMessageId);
+                        //        docCmd.Parameters.AddWithValue("@filename", file.fileName);
+                        //        docCmd.Parameters.AddWithValue("@filedata", file.fileData);
+                        //        docCmd.Parameters.AddWithValue("@filetype", file.fileType);
+                        //        docCmd.Parameters.AddWithValue("@isSigned", checkBox1.Checked);
+                        //        docCmd.ExecuteNonQuery();
+                        //    }
+                        //}
+
+                        //foreach (var file in attachedFiles)
+                        //{
+                        //    string insertDocQuery = "INSERT INTO documents (message_id, filename, filedata, filetype, is_signed, is_draft) " +
+                        //                            "VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0)";
+
+                        //    using (MySqlCommand docCmd = new MySqlCommand(insertDocQuery, conn))
+                        //    {
+                        //        docCmd.Parameters.AddWithValue("@messageId", insertedMessageId);
+                        //        docCmd.Parameters.AddWithValue("@filename", file.fileName);
+                        //        docCmd.Parameters.AddWithValue("@filedata", file.fileData); // уже актуальные данные
+                        //        docCmd.Parameters.AddWithValue("@filetype", file.fileType);
+                        //        docCmd.Parameters.AddWithValue("@isSigned", checkBox1.Checked);
+                        //        docCmd.ExecuteNonQuery();
+                        //    }
+                        //}
                     }
+
+                    Task.Run(() => CleanOldTempDocuments());
 
                     bool isFromRead = false;
 
@@ -953,6 +1066,8 @@ WHERE id = @draftId";
 
         Dictionary<int, string> cachedPaths = new Dictionary<int, string>();
 
+        private Dictionary<string, string> tempDocumentPaths = new Dictionary<string, string>();
+
         private void предварительныйПросмотрДокументовToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (attachedFiles.Count == 0)
@@ -978,35 +1093,77 @@ WHERE id = @draftId";
 
                 try
                 {
-                    // Обновим fileData из базы перед открытием
-                    string connectionString = "server=localhost;user=root;password=1111;database=document_system;";
-                    using (var conn = new MySqlConnection(connectionString))
+                   string connectionString = "server=localhost;user=root;password=1111;database=document_system;";
+                    // Если файл ещё не в базе — используем уже прикреплённые данные
+                        // Проверка — существует ли вообще файл с таким ID в базе
+                        bool fileExistsInDb = false;
+
+                    if (file.id == 0)
                     {
-                        conn.Open();
-                        string selectQuery = "SELECT filedata FROM documents WHERE id = @id";
-                        using (var cmd = new MySqlCommand(selectQuery, conn))
+                        if (file.fileData == null)
                         {
-                            cmd.Parameters.AddWithValue("@id", file.id);
-                            using (var reader = cmd.ExecuteReader())
+                            MessageBox.Show($"Файл \"{file.fileName}\" не содержит данных", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            continue;
+                        }
+                    }
+                    else
+                    {
+
+                        using (var conn = new MySqlConnection(connectionString))
+                        {
+                            conn.Open();
+                            string checkQuery = "SELECT COUNT(*) FROM documents WHERE id = @id";
+                            using (var cmd = new MySqlCommand(checkQuery, conn))
                             {
-                                if (reader.Read())
+                                cmd.Parameters.AddWithValue("@id", file.id);
+                                fileExistsInDb = Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                            }
+
+                            if (fileExistsInDb)
+                            {
+                                string selectQuery = "SELECT filedata FROM documents WHERE id = @id";
+                                using (var cmd = new MySqlCommand(selectQuery, conn))
                                 {
-                                    file.fileData = (byte[])reader["filedata"];
+                                    cmd.Parameters.AddWithValue("@id", file.id);
+                                    using (var reader = cmd.ExecuteReader())
+                                    {
+                                        if (reader.Read())
+                                        {
+                                            file.fileData = (byte[])reader["filedata"];
+                                        }
+                                        else
+                                        {
+                                            MessageBox.Show($"Не удалось загрузить файл с ID {file.id} из базы данных",
+                                                "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                            continue;
+                                        }
+                                    }
                                 }
-                                else
+                            }
+                            else
+                            {
+                                // Если файла с таким ID в базе нет — значит, он временный (ещё не отправлен)
+                                if (file.fileData == null)
                                 {
-                                    MessageBox.Show($"Не удалось загрузить файл с ID {file.id} из базы данных",
-                                        "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    MessageBox.Show($"Файл \"{file.fileName}\" не содержит данных", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                                     continue;
                                 }
                             }
                         }
                     }
 
-                    // Создаём временный файл
-                    string tempFileName = $"{Guid.NewGuid()}_{file.fileName}";
-                    string tempPath = Path.Combine(Path.GetTempPath(), tempFileName);
-                    File.WriteAllBytes(tempPath, file.fileData);
+                    string tempPath;
+                    if (!tempDocumentPaths.TryGetValue(file.fileHash, out tempPath))
+                    {
+                        string tempFileName = $"{file.fileHash}_{file.fileName}";
+                        string tempDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TempDocuments");
+                        Directory.CreateDirectory(tempDir);
+                        tempPath = Path.Combine(tempDir, tempFileName);
+
+                        File.WriteAllBytes(tempPath, file.fileData);
+                        tempDocumentPaths[file.fileHash] = tempPath;
+                    }
+
                     DateTime originalWriteTime = File.GetLastWriteTime(tempPath);
 
                     Process process = new Process();
@@ -1025,20 +1182,28 @@ WHERE id = @draftId";
                                 {
                                     byte[] updatedData = File.ReadAllBytes(tempPath);
 
-                                    using (var conn = new MySqlConnection(connectionString))
+                                    if (fileExistsInDb)
                                     {
-                                        conn.Open();
-                                        string updateQuery = "UPDATE documents SET filedata = @filedata WHERE id = @id";
-                                        using (var cmd = new MySqlCommand(updateQuery, conn))
+                                        using (var conn = new MySqlConnection(connectionString))
                                         {
-                                            cmd.Parameters.AddWithValue("@filedata", updatedData);
-                                            cmd.Parameters.AddWithValue("@id", file.id);
-                                            cmd.ExecuteNonQuery();
+                                            conn.Open();
+                                            string updateQuery = "UPDATE documents SET filedata = @filedata WHERE id = @id";
+                                            using (var cmd = new MySqlCommand(updateQuery, conn))
+                                            {
+                                                cmd.Parameters.AddWithValue("@filedata", updatedData);
+                                                cmd.Parameters.AddWithValue("@id", file.id);
+                                                cmd.ExecuteNonQuery();
+                                            }
                                         }
-                                    }
 
-                                    file.fileData = updatedData; // обновляем в памяти
-                                    Invoke(new Action(UpdateComboBox3));
+                                        file.fileData = updatedData;
+                                        Invoke(new Action(UpdateComboBox3));
+                                    }
+                                    else
+                                    {
+                                        // ещё не в базе — просто обновляем объект
+                                        file.fileData = updatedData;
+                                    }
                                 }
                                 catch (Exception ex)
                                 {
@@ -1049,7 +1214,12 @@ WHERE id = @draftId";
 
                             try
                             {
-                                File.Delete(tempPath);
+                                if (fileExistsInDb) // ← вот теперь корректно
+                                {
+                                    File.Delete(tempPath);
+                                    tempDocumentPaths.Remove(file.fileHash);
+                                }
+                                // иначе оставляем файл — пригодится при отправке
                             }
                             catch (Exception ex)
                             {
@@ -1068,27 +1238,49 @@ WHERE id = @draftId";
                 }
             }
 
-            Task.Run(() => CleanOldTempFiles()); // Очистка Temp в фоне         
+            //Task.Run(() => CleanOldTempDocuments()); // Фоновая очистка TempDocuments
         }
 
-        private void CleanOldTempFiles()
+        private void CleanOldTempDocuments()
         {
-            string tempDir = Path.GetTempPath();
-            var files = Directory.GetFiles(tempDir, "*_*");
-
-            foreach (var file in files)
+            try
             {
-                try
+                string customTempDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TempDocuments");
+                if (!Directory.Exists(customTempDir))
+                    return;
+
+                var files = Directory.GetFiles(customTempDir);
+                foreach (var file in files)
                 {
-                    DateTime lastAccess = File.GetLastAccessTime(file);
-                    if ((DateTime.Now - lastAccess).TotalHours > 2) // старше 2 часов
+                    try
                     {
                         File.Delete(file);
                     }
+                    catch { /* Пропускаем ошибки на отдельных файлах */ }
                 }
-                catch { /* Пропускаем ошибки */ }
             }
+            catch { /* Пропускаем общие ошибки */ }
         }
+
+
+        //private void CleanOldTempFiles()
+        //{
+        //    string tempDir = Path.GetTempPath();
+        //    var files = Directory.GetFiles(tempDir, "*_*");
+
+        //    foreach (var file in files)
+        //    {
+        //        try
+        //        {
+        //            DateTime lastAccess = File.GetLastAccessTime(file);
+        //            if ((DateTime.Now - lastAccess).TotalHours > 2) // старше 2 часов
+        //            {
+        //                File.Delete(file);
+        //            }
+        //        }
+        //        catch { /* Пропускаем ошибки */ }
+        //    }
+        //}
 
         private void UpdateComboBox3()
         {
@@ -1097,6 +1289,8 @@ WHERE id = @draftId";
             {
                 comboBox3.Items.Add(file.fileName);
             }
+
+            comboBox3.Text = "Прикреплённые документы:";
 
             if (comboBox3.Items.Count > 0)
                 comboBox3.SelectedIndex = 0;
@@ -1176,7 +1370,7 @@ WHERE id = @draftId";
 
         private void просмотретьДокументыToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Task.Run(() => CleanOldTempFiles()); // Очистка Temp в фоне
+            //Task.Run(() => CleanOldTempFiles()); // Очистка Temp в фоне
 
             if (attachedFiles.Count == 0)
             {
