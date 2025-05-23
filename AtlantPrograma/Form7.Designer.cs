@@ -212,28 +212,28 @@
             // предварительныйПросмотрДокументовToolStripMenuItem
             // 
             this.предварительныйПросмотрДокументовToolStripMenuItem.Name = "предварительныйПросмотрДокументовToolStripMenuItem";
-            this.предварительныйПросмотрДокументовToolStripMenuItem.Size = new System.Drawing.Size(380, 26);
+            this.предварительныйПросмотрДокументовToolStripMenuItem.Size = new System.Drawing.Size(410, 26);
             this.предварительныйПросмотрДокументовToolStripMenuItem.Text = "Предварительный просмотр документов";
             this.предварительныйПросмотрДокументовToolStripMenuItem.Click += new System.EventHandler(this.предварительныйПросмотрДокументовToolStripMenuItem_Click);
             // 
             // просмотретьДокументыToolStripMenuItem
             // 
             this.просмотретьДокументыToolStripMenuItem.Name = "просмотретьДокументыToolStripMenuItem";
-            this.просмотретьДокументыToolStripMenuItem.Size = new System.Drawing.Size(380, 26);
+            this.просмотретьДокументыToolStripMenuItem.Size = new System.Drawing.Size(410, 26);
             this.просмотретьДокументыToolStripMenuItem.Text = "Просмотреть документы";
             this.просмотретьДокументыToolStripMenuItem.Click += new System.EventHandler(this.просмотретьДокументыToolStripMenuItem_Click);
             // 
             // скачатьВсеДокументыToolStripMenuItem
             // 
             this.скачатьВсеДокументыToolStripMenuItem.Name = "скачатьВсеДокументыToolStripMenuItem";
-            this.скачатьВсеДокументыToolStripMenuItem.Size = new System.Drawing.Size(380, 26);
+            this.скачатьВсеДокументыToolStripMenuItem.Size = new System.Drawing.Size(410, 26);
             this.скачатьВсеДокументыToolStripMenuItem.Text = "Скачать все документы";
             this.скачатьВсеДокументыToolStripMenuItem.Click += new System.EventHandler(this.скачатьВсеДокументыToolStripMenuItem_Click);
             // 
             // сброситьИзмененияВДокументахToolStripMenuItem
             // 
             this.сброситьИзмененияВДокументахToolStripMenuItem.Name = "сброситьИзмененияВДокументахToolStripMenuItem";
-            this.сброситьИзмененияВДокументахToolStripMenuItem.Size = new System.Drawing.Size(380, 26);
+            this.сброситьИзмененияВДокументахToolStripMenuItem.Size = new System.Drawing.Size(410, 26);
             this.сброситьИзмененияВДокументахToolStripMenuItem.Text = "Сбросить изменения в документах";
             this.сброситьИзмененияВДокументахToolStripMenuItem.Click += new System.EventHandler(this.сброситьИзмененияВДокументахToolStripMenuItem_Click);
             // 
@@ -287,7 +287,6 @@
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Button button2;
         private System.Windows.Forms.OpenFileDialog openFileDialog1;
-        private System.Windows.Forms.ComboBox comboBox3;
         private System.Windows.Forms.CheckBox checkBox1;
         private System.Windows.Forms.PictureBox pictureBox1;
         private System.Windows.Forms.MenuStrip menuStrip1;
@@ -297,5 +296,6 @@
         public System.Windows.Forms.ToolStripMenuItem действияСДокументамиToolStripMenuItem;
         public System.Windows.Forms.ToolStripMenuItem сброситьИзмененияВДокументахToolStripMenuItem;
         public System.Windows.Forms.ToolStripMenuItem очиститьСписокПрикреплённыхСообщенийToolStripMenuItem;
+        public System.Windows.Forms.ComboBox comboBox3;
     }
 }

@@ -160,6 +160,7 @@ namespace AtlantPrograma
                     {
                         this.Close();
                         Task.Run(() => CleanOldTempDocuments());
+                        documentEditCounter = 0;
                     }
                 }
                 else if (hasRecipient && hasSubject && hasBody)
@@ -218,12 +219,16 @@ namespace AtlantPrograma
                     {
                         this.Close();
                         Task.Run(() => CleanOldTempDocuments());
+                        documentEditCounter = 0;
+                        originalAttachedFiles = null;
                     }
                 }
                 else
                 {
                     this.Close();
                     Task.Run(() => CleanOldTempDocuments());
+                    documentEditCounter = 0;
+                    originalAttachedFiles = null;
                 }
             }
             else
@@ -649,6 +654,10 @@ namespace AtlantPrograma
 
                     Task.Run(() => CleanOldTempDocuments());
 
+                    originalAttachedFiles = null;
+
+                    documentEditCounter = 0;
+
                     bool isFromRead = false;
 
                     if (replyingToMessageId.HasValue)
@@ -744,12 +753,12 @@ namespace AtlantPrograma
             textBox1.ReadOnly = true;
             richTextBox1.ReadOnly = true;
             comboBox1.Visible = false; // скрываем выпадающий список получателей
-            label1.Text = $"От: {senderUsername}"; // изменяем метку на "От:"
+            label1.Text = $"От: {senderUsername}";
 
             comboBox2.Enabled = false;
             button1.Enabled = false;
 
-            button2.Text = "Закрыть"; // изменяем текст кнопки выхода
+            button2.Text = "Закрыть";
             isReadOnlyMode = true;
 
             this.Text = "ПРОСМОТР СООБЩЕНИЯ";
@@ -758,7 +767,6 @@ namespace AtlantPrograma
             pictureBox1.Visible = false;
 
             comboBox3.Text = "Отправленные вам документы:";
-            // Очистим и загрузим документы в comboBox3 и список attachedFiles
             comboBox3.Items.Clear();
             attachedFiles.Clear();
 
@@ -767,28 +775,26 @@ namespace AtlantPrograma
                 conn.Open();
 
                 string query = @"
-            SELECT d.filename, d.filedata, d.filetype
+            SELECT d.id, d.filename, d.filedata, d.filetype
             FROM documents d
-            JOIN messages m ON d.message_id = m.id
-            WHERE m.subject = @subject AND m.recipient = @recipient AND m.sender = @sender";
+            WHERE d.message_id = @messageId";
 
                 using (MySqlCommand cmd = new MySqlCommand(query, conn))
                 {
-                    cmd.Parameters.AddWithValue("@subject", textBox1.Text);           // тема
-                    cmd.Parameters.AddWithValue("@recipient", senderUser);            // текущий пользователь, кому пришло
-                    cmd.Parameters.AddWithValue("@sender", senderUsername);               // отправитель (если совпадают)
+                    cmd.Parameters.AddWithValue("@messageId", CurrentsmessageId);
 
                     using (var reader = cmd.ExecuteReader())
                     {
                         while (reader.Read())
                         {
+                            int fileId = reader.GetInt32("id");
                             string fileName = reader.GetString("filename");
                             byte[] fileData = (byte[])reader["filedata"];
                             string fileType = reader.GetString("filetype");
 
                             comboBox3.Items.Add(fileName);
                             string fileHash = GetFileHash(fileData);
-                            attachedFiles.Add((-1, fileName, fileData, fileType, fileHash)); // -1 — заглушка, так как id не запрашивается
+                            attachedFiles.Add((fileId, fileName, fileData, fileType, fileHash));
                         }
                     }
                 }
@@ -808,6 +814,77 @@ namespace AtlantPrograma
                 сброситьИзмененияВДокументахToolStripMenuItem.Enabled = false;
                 очиститьСписокПрикреплённыхСообщенийToolStripMenuItem.Enabled = false;
             }
+            //textBox1.Text = subject;
+            //richTextBox1.Text = body;
+
+            //textBox1.ReadOnly = true;
+            //richTextBox1.ReadOnly = true;
+            //comboBox1.Visible = false; // скрываем выпадающий список получателей
+            //label1.Text = $"От: {senderUsername}"; // изменяем метку на "От:"
+
+            //comboBox2.Enabled = false;
+            //button1.Enabled = false;
+
+            //button2.Text = "Закрыть"; // изменяем текст кнопки выхода
+            //isReadOnlyMode = true;
+
+            //this.Text = "ПРОСМОТР СООБЩЕНИЯ";
+
+            //checkBox1.Visible = false;
+            //pictureBox1.Visible = false;
+
+            //comboBox3.Text = "Отправленные вам документы:";
+            //// Очистим и загрузим документы в comboBox3 и список attachedFiles
+            //comboBox3.Items.Clear();
+            //attachedFiles.Clear();
+
+            //using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            //{
+            //    conn.Open();
+
+            //    string query = @"
+            //SELECT d.filename, d.filedata, d.filetype
+            //FROM documents d
+            //JOIN messages m ON d.message_id = m.id
+            //WHERE m.subject = @subject AND m.recipient = @recipient AND m.sender = @sender";
+
+            //    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+            //    {
+            //        cmd.Parameters.AddWithValue("@subject", textBox1.Text);           // тема
+            //        cmd.Parameters.AddWithValue("@recipient", senderUser);            // текущий пользователь, кому пришло
+            //        cmd.Parameters.AddWithValue("@sender", senderUsername);               // отправитель (если совпадают)
+
+            //        using (var reader = cmd.ExecuteReader())
+            //        {
+            //            while (reader.Read())
+            //            {
+            //                string fileName = reader.GetString("filename");
+            //                byte[] fileData = (byte[])reader["filedata"];
+            //                string fileType = reader.GetString("filetype");
+
+            //                comboBox3.Items.Add(fileName);
+            //                string fileHash = GetFileHash(fileData);
+            //                attachedFiles.Add((CurrentsmessageId, fileName, fileData, fileType, fileHash)); // -1 — заглушка, так как id не запрашивается
+            //            }
+            //        }
+            //    }
+            //}
+            //if (comboBox3.Items.Count == 0)
+            //{
+            //    действияСДокументамиToolStripMenuItem.Enabled = false;
+            //    comboBox3.Text = "Пусто";
+            //    comboBox3.Enabled = false;
+            //}
+            //else
+            //{
+            //    действияСДокументамиToolStripMenuItem.Enabled = true;
+            //    предварительныйПросмотрДокументовToolStripMenuItem.Enabled = false;
+            //    скачатьВсеДокументыToolStripMenuItem.Enabled = true;
+            //    просмотретьДокументыToolStripMenuItem.Enabled = true;
+            //    сброситьИзмененияВДокументахToolStripMenuItem.Enabled = false;
+            //    очиститьСписокПрикреплённыхСообщенийToolStripMenuItem.Enabled = false;
+            //}
+            UpdateComboBox3ForReadOnly();
         }
 
         public void LoadDraftForEditing(int draftId)
@@ -1070,10 +1147,18 @@ WHERE id = @draftId";
                     // Добавляем файл с уникальным id
                     attachedFiles.Add((newId, fileName, fileBytes, extension, fileHash));
 
+                    // 🆕 Добавляем в список оригиналов, если ещё не добавлен документ с таким ID
+                    bool originalAlreadyExists = originalAttachedFiles.Any(f => f.id == newId);
+                    if (!originalAlreadyExists)
+                    {
+                        originalAttachedFiles.Add((newId, fileName, (byte[])fileBytes.Clone(), extension, fileHash));
+                    }
+
                     comboBox3.Items.Add(fileName);
                     comboBox3.Text = "Прикреплённые документы:";
                 }
             }
+            UpdateComboBox3();
         }
         // Пример присваивания уникальных ID для файлов при их добавлении
         private int GetNextId()
@@ -1099,6 +1184,10 @@ WHERE id = @draftId";
 
         private Dictionary<string, string> tempDocumentPaths = new Dictionary<string, string>();
 
+
+        private List<(int id, string fileName, byte[] fileData, string fileType, string fileHash)> originalAttachedFiles =
+    new List<(int, string, byte[], string, string)>();
+
         private void предварительныйПросмотрДокументовToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (attachedFiles.Count == 0)
@@ -1106,6 +1195,14 @@ WHERE id = @draftId";
                 MessageBox.Show("Нет доступных документов для предварительного просмотра", "Информация",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
+            }
+
+            if (originalAttachedFiles.Count == 0)
+            {
+                // Создаём копию текущего списка
+                originalAttachedFiles = attachedFiles
+                    .Select(file => (file.id, file.fileName, (byte[])file.fileData.Clone(), file.fileType, file.fileHash))
+                    .ToList();
             }
 
             List<int> selectedIds = ShowDocumentSelectionDialogWithIds(attachedFiles);
@@ -1188,6 +1285,8 @@ WHERE id = @draftId";
                     // ⏱ Добавляем небольшую задержку перед началом отслеживания
                     Task.Run(async () =>
                     {
+                        documentEditCounter++;
+
                         await Task.Delay(3000); // Подождать, чтобы Word успел открыть файл
 
                         // Ждём, пока файл перестанет использоваться
@@ -1453,18 +1552,36 @@ WHERE id = @draftId";
         //    }
         //}
 
+        private void UpdateComboBox3ForReadOnly()
+        {
+            comboBox3.Items.Clear();
+
+            var displayList = GetDisplayNamesWithSizes(attachedFiles);
+
+            foreach (var item in displayList)
+                comboBox3.Items.Add(item.displayName);
+
+            if (comboBox3.Items.Count > 0)
+            {
+                //comboBox3.SelectedIndex = 0;
+                comboBox3.Text = "Отправленные вам документы:";
+            }
+        }
+
         private void UpdateComboBox3()
         {
             comboBox3.Items.Clear();
-            foreach (var file in attachedFiles)
-            {
-                comboBox3.Items.Add(file.fileName);
-            }
 
-            comboBox3.Text = "Прикреплённые документы:";
+            var displayList = GetDisplayNamesWithSizes(attachedFiles);
+
+            foreach (var item in displayList)
+                comboBox3.Items.Add(item.displayName);
 
             if (comboBox3.Items.Count > 0)
-                comboBox3.SelectedIndex = 0;
+            {
+                //comboBox3.SelectedIndex = 0;
+                comboBox3.Text = "Прикреплённые документы:";
+            }           
         }
 
 
@@ -1492,8 +1609,15 @@ WHERE id = @draftId";
                 CheckOnClick = true
             };
 
-            foreach (var file in files)
-                listBox.Items.Add($"{file.fileName} (ID: {file.id})");
+            // Получаем отображаемые имена и соответствующие ID
+            var displayList = GetDisplayNamesWithSizes(files);
+            Dictionary<string, int> nameToIdMap = new Dictionary<string, int>();
+
+            foreach (var (displayName, id) in displayList)
+            {
+                listBox.Items.Add(displayName);
+                nameToIdMap[displayName] = id;
+            }
 
             Button ok = new Button() { Text = "Открыть", Left = 210, Width = 75, Top = 230, DialogResult = DialogResult.OK };
             Button cancel = new Button() { Text = "Отмена", Left = 295, Width = 75, Top = 230, DialogResult = DialogResult.Cancel };
@@ -1511,10 +1635,9 @@ WHERE id = @draftId";
 
                 foreach (var item in listBox.CheckedItems)
                 {
-                    string selectedText = item.ToString();
-                    int startIndex = selectedText.LastIndexOf("ID: ") + 4;
-                    int endIndex = selectedText.LastIndexOf(")");
-                    if (int.TryParse(selectedText.Substring(startIndex, endIndex - startIndex), out int id))
+                    string displayName = item.ToString();
+
+                    if (nameToIdMap.TryGetValue(displayName, out int id))
                     {
                         selectedIds.Add(id);
                     }
@@ -1524,20 +1647,104 @@ WHERE id = @draftId";
             }
 
             return null;
+
+            //Form prompt = new Form()
+            //{
+            //    Width = 400,
+            //    Height = 320,
+            //    Text = "Выберите документы",
+            //    StartPosition = FormStartPosition.CenterParent,
+            //    FormBorderStyle = FormBorderStyle.FixedDialog,
+            //    MaximizeBox = false,
+            //    MinimizeBox = false
+            //};
+
+            //Label label = new Label() { Left = 10, Top = 10, Text = "Доступные документы:", AutoSize = true };
+
+            //CheckedListBox listBox = new CheckedListBox()
+            //{
+            //    Left = 10,
+            //    Top = 35,
+            //    Width = 360,
+            //    Height = 180,
+            //    CheckOnClick = true
+            //};
+
+            //foreach (var file in files)
+            //    listBox.Items.Add($"{file.fileName} (ID: {file.id})");
+
+
+            //Button ok = new Button() { Text = "Открыть", Left = 210, Width = 75, Top = 230, DialogResult = DialogResult.OK };
+            //Button cancel = new Button() { Text = "Отмена", Left = 295, Width = 75, Top = 230, DialogResult = DialogResult.Cancel };
+
+            //prompt.Controls.Add(label);
+            //prompt.Controls.Add(listBox);
+            //prompt.Controls.Add(ok);
+            //prompt.Controls.Add(cancel);
+            //prompt.AcceptButton = ok;
+            //prompt.CancelButton = cancel;
+
+            //if (prompt.ShowDialog() == DialogResult.OK)
+            //{
+            //    List<int> selectedIds = new List<int>();
+
+            //    foreach (var item in listBox.CheckedItems)
+            //    {
+            //        string selectedText = item.ToString();
+            //        int startIndex = selectedText.LastIndexOf("ID: ") + 4;
+            //        int endIndex = selectedText.LastIndexOf(")");
+            //        if (int.TryParse(selectedText.Substring(startIndex, endIndex - startIndex), out int id))
+            //        {
+            //            selectedIds.Add(id);
+            //        }
+            //    }
+
+            //    return selectedIds;
+            //}
+
+            //return null;
         }
 
-        // Функция для форматирования размера файла в читаемый вид
-        //private string FormatFileSize(long fileSize)
-        //{
-        //    if (fileSize < 1024)
-        //        return $"{fileSize} байт";
-        //    else if (fileSize < 1024 * 1024)
-        //        return $"{fileSize / 1024} КБ";
-        //    else
-        //        return $"{fileSize / (1024 * 1024)} МБ";
-        //}
+        //Функция для форматирования размера файла в читаемый вид
+        private string FormatFileSize(long fileSize)
+        {
+            if (fileSize < 1024)
+                return $"{fileSize} байт";
+            else if (fileSize < 1024 * 1024)
+                return $"{fileSize / 1024} КБ";
+            else
+                return $"{fileSize / (1024 * 1024)} МБ";
+        }
 
+        // Метод генерации отображаемых имён с размерами (если дубликаты по имени)
+        private List<(string displayName, int id)> GetDisplayNamesWithSizes(List<(int id, string fileName, byte[] fileData, string fileType, string fileHash)> files)
+        {
+            // Группировка по имени без расширения (например, "ЛР1" у "ЛР1.doc" и "ЛР1.docx")
+            var nameGroups = files
+                .GroupBy(f => Path.GetFileNameWithoutExtension(f.fileName), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
+            List<(string displayName, int id)> displayList = new List<(string displayName, int id)>();
+
+            foreach (var file in files)
+            {
+                string baseName = Path.GetFileNameWithoutExtension(file.fileName);
+                string displayName = file.fileName;
+                long size = file.fileData?.LongLength ?? 0;
+
+                // Добавляем размер, если дубликаты по имени без расширения
+                if (nameGroups.ContainsKey(baseName) && nameGroups[baseName].Count > 1)
+                {
+                    string readableSize = FormatFileSize(size);
+                    displayName += $" ({readableSize})";
+                }
+
+                // Убираем ID из отображения (если нужно можно включить обратно)
+                displayList.Add((displayName, file.id));
+            }
+
+            return displayList;
+        }
 
         private void просмотретьДокументыToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -1551,18 +1758,23 @@ WHERE id = @draftId";
                                 MessageBoxIcon.Information);
                 return;
             }
-
-            DialogResult result = MessageBox.Show(
-                "Вы можете выбрать один или несколько документов для просмотра.\n\n" +
-                "Открытие большого количества документов может повлиять на производительность!",
-                "Предупреждение",
-                MessageBoxButtons.OKCancel,
-                MessageBoxIcon.Warning);
-
-            if (result == DialogResult.OK)
+            else
             {
                 ShowDocumentSelectionDialog(attachedFiles);
             }
+
+                //DialogResult result = MessageBox.Show(
+                //    "Вы можете выбрать один или несколько документов для просмотра.\n\n" +
+                //    "Открытие большого количества документов может повлиять на производительность!",
+                //    "Предупреждение",
+                //    MessageBoxButtons.OKCancel,
+                //    MessageBoxIcon.Warning);
+        
+
+            //if (result == DialogResult.OK)
+            //{
+            //    ShowDocumentSelectionDialog(attachedFiles);
+            //}
         }
 
         private void ShowDocumentSelectionDialog(List<(int id, string fileName, byte[] fileData, string fileType, string fileHash)> files)
@@ -1586,8 +1798,17 @@ WHERE id = @draftId";
                 Height = 240
             };
 
-            foreach (var file in files)
-                listBox.Items.Add($"{file.fileName} (ID: {file.id})");
+            // Получаем список отображаемых имён с размером (если дублируются по имени)
+            var displayNamesWithIds = GetDisplayNamesWithSizes(files);
+
+            // Сопоставим отображаемое имя с ID для последующего поиска
+            Dictionary<string, int> nameToIdMap = new Dictionary<string, int>();
+
+            foreach (var (displayName, id) in displayNamesWithIds)
+            {
+                listBox.Items.Add(displayName);
+                nameToIdMap[displayName] = id;
+            }
 
             Button openButton = new Button()
             {
@@ -1617,31 +1838,99 @@ WHERE id = @draftId";
             {
                 foreach (var item in listBox.CheckedItems)
                 {
-                    string selectedFileName = item.ToString();
+                    string selectedDisplayName = item.ToString();
 
-                    // Извлекаем ID из строки
-                    int startIndex = selectedFileName.LastIndexOf("ID: ") + 4;
-                    int endIndex = selectedFileName.LastIndexOf(")");
-                    int id = int.Parse(selectedFileName.Substring(startIndex, endIndex - startIndex));
-
-                    // Ищем файл по ID, а не по имени
-                    var selectedFile = files.FirstOrDefault(f => f.id == id);
-
-                    if (selectedFile.fileData != null)
+                    if (nameToIdMap.TryGetValue(selectedDisplayName, out int id))
                     {
-                        // Создаём уникальное имя файла, добавляя ID перед именем
-                        string uniqueName = $"{selectedFile.id}_{selectedFile.fileName}";
-                        string tempPath = Path.Combine(Path.GetTempPath(), uniqueName);
+                        // Ищем файл по ID
+                        var selectedFile = files.FirstOrDefault(f => f.id == id);
 
-                        // Сохраняем файл и открываем
-                        File.WriteAllBytes(tempPath, selectedFile.fileData);
-                        Process.Start(new ProcessStartInfo(tempPath) { UseShellExecute = true });
-                        //string tempPath = Path.Combine(Path.GetTempPath(), selectedFile.fileName);
-                        //File.WriteAllBytes(tempPath, selectedFile.fileData);
-                        //Process.Start(new ProcessStartInfo(tempPath) { UseShellExecute = true });
+                        if (selectedFile.fileData != null)
+                        {
+                            // Создаём уникальное имя файла, используя Guid
+                            string uniqueName = $"{Guid.NewGuid()}_{selectedFile.fileName}";
+                            string tempPath = Path.Combine(Path.GetTempPath(), uniqueName);
+
+                            File.WriteAllBytes(tempPath, selectedFile.fileData);
+                            Process.Start(new ProcessStartInfo(tempPath) { UseShellExecute = true });
+                        }
                     }
                 }
             }
+            //Form dialog = new Form()
+            //{
+            //    Width = 400,
+            //    Height = 350,
+            //    FormBorderStyle = FormBorderStyle.FixedDialog,
+            //    Text = "Выбор документов для просмотра",
+            //    StartPosition = FormStartPosition.CenterParent,
+            //    MaximizeBox = false,
+            //    MinimizeBox = false
+            //};
+
+            //CheckedListBox listBox = new CheckedListBox()
+            //{
+            //    Left = 10,
+            //    Top = 10,
+            //    Width = 360,
+            //    Height = 240
+            //};
+
+            //foreach (var file in files)
+            //    listBox.Items.Add($"{file.fileName} (ID: {file.id})");
+
+            //Button openButton = new Button()
+            //{
+            //    Text = "Открыть",
+            //    Left = 200,
+            //    Width = 80,
+            //    Top = 265,
+            //    DialogResult = DialogResult.OK
+            //};
+
+            //Button cancelButton = new Button()
+            //{
+            //    Text = "Отмена",
+            //    Left = 290,
+            //    Width = 80,
+            //    Top = 265,
+            //    DialogResult = DialogResult.Cancel
+            //};
+
+            //dialog.Controls.Add(listBox);
+            //dialog.Controls.Add(openButton);
+            //dialog.Controls.Add(cancelButton);
+            //dialog.AcceptButton = openButton;
+            //dialog.CancelButton = cancelButton;
+
+            //if (dialog.ShowDialog() == DialogResult.OK)
+            //{
+            //    foreach (var item in listBox.CheckedItems)
+            //    {
+            //        string selectedFileName = item.ToString();
+
+            //        // Извлекаем ID из строки
+            //        int startIndex = selectedFileName.LastIndexOf("ID: ") + 4;
+            //        int endIndex = selectedFileName.LastIndexOf(")");
+            //        int id = int.Parse(selectedFileName.Substring(startIndex, endIndex - startIndex));
+
+            //        // Ищем файл по ID, а не по имени
+            //        var selectedFile = files.FirstOrDefault(f => f.id == id);
+
+            //        if (selectedFile.fileData != null)
+            //        {
+            //            // Создаём уникальное имя файла, используя Guid
+            //            string uniqueName = $"{Guid.NewGuid()}_{selectedFile.fileName}";
+            //            string tempPath = Path.Combine(Path.GetTempPath(), uniqueName);
+
+            //            File.WriteAllBytes(tempPath, selectedFile.fileData);
+            //            Process.Start(new ProcessStartInfo(tempPath) { UseShellExecute = true });                   
+            //        //string tempPath = Path.Combine(Path.GetTempPath(), selectedFile.fileName);
+            //        //File.WriteAllBytes(tempPath, selectedFile.fileData);
+            //        //Process.Start(new ProcessStartInfo(tempPath) { UseShellExecute = true });
+            //    }
+            //}
+            //}
         }
         private void скачатьВсеДокументыToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -1683,64 +1972,134 @@ WHERE id = @draftId";
         }
 
         //private int CurrentsmessageId; // должна быть в твоём классе, ты явно где-то уже её задаёшь при ответе/редактировании
-
+        private int documentEditCounter = 0;
         private void сброситьИзмененияВДокументахToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            if (documentEditCounter == 0)
+            {
+                MessageBox.Show("Изменений в документах ещё не происходило", "Информация",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
             var confirm = MessageBox.Show(
-        "Вы уверены, что хотите сбросить изменения?\n" +
-        "Документы будут загружены заново с вашего компьютера",
-        "Подтверждение сброса", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                "Вы уверены, что хотите сбросить изменения?\n" +
+                "Документы будут восстановлены в исходном виде",
+                "Подтверждение сброса", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
             if (confirm != DialogResult.Yes)
                 return;
 
             try
             {
-                //int currentMessageId = currentMessageIdForEditing; // замени на свою переменную ID редактируемого сообщения
+                ResetToOriginalDocuments();
+                Task.Run(() => CleanOldTempDocuments());
 
-                attachedFiles = LoadDocumentsFromDatabase(CurrentsmessageId); // загружаем актуальные документы
-                UpdateComboBox3(); // обновляем список документов
-
-                MessageBox.Show("Изменения сброшены, документы загружены заново",
-                    "Готово", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Изменения сброшены, документы восстановлены", "Готово",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при сбросе изменений: {ex.Message}",
-                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Ошибка при сбросе изменений: {ex.Message}", "Ошибка",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private List<(int id, string fileName, byte[] fileData, string fileType, string fileHash)>
-    LoadDocumentsFromDatabase(int messageId)
-        {
-            var result = new List<(int, string, byte[], string, string)>();
 
-            using (var conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+
+        private void ResetToOriginalDocuments()
+        {
+            // Сначала заменяем список прикреплённых на оригинальные
+            attachedFiles = originalAttachedFiles
+                .Select(file => (file.id, file.fileName, (byte[])file.fileData.Clone(), file.fileType, file.fileHash))
+                .ToList();
+
+            // Обновляем ComboBox
+            UpdateComboBox3();
+
+            // Если это сообщение существует в базе
+            if (CurrentsmessageId != 0)
             {
-                conn.Open();
-                string query = "SELECT id, filename, filedata, filetype FROM documents WHERE message_id = @messageId";
-                using (var cmd = new MySqlCommand(query, conn))
+                string connectionString = "server=localhost;user=root;password=1111;database=document_system;";
+                HashSet<int> existingDocumentIds = new HashSet<int>();
+
+                try
                 {
-                    cmd.Parameters.AddWithValue("@messageId", messageId);
-                    using (var reader = cmd.ExecuteReader())
+                    using (var conn = new MySqlConnection(connectionString))
                     {
-                        while (reader.Read())
+                        conn.Open();
+
+                        // Получаем ID документов из базы, связанных с этим сообщением
+                        string getIdsQuery = "SELECT id FROM documents WHERE message_id = @msgId";
+                        using (var cmd = new MySqlCommand(getIdsQuery, conn))
                         {
-                            result.Add((
-                                reader.GetInt32("id"),
-                                reader.GetString("filename"),
-                                (byte[])reader["filedata"],
-                                reader.GetString("filetype"),
-                                "" // пустой fileHash, которого нет в БД
-                            ));
+                            cmd.Parameters.AddWithValue("@msgId", CurrentsmessageId);
+                            using (var reader = cmd.ExecuteReader())
+                            {
+                                while (reader.Read())
+                                    existingDocumentIds.Add(reader.GetInt32("id"));
+                            }
+                        }
+                    }
+
+                    // Обновляем документы, если они есть в базе
+                    foreach (var file in originalAttachedFiles)
+                    {
+                        if (existingDocumentIds.Contains(file.id))
+                        {
+                            using (var conn = new MySqlConnection(connectionString))
+                            {
+                                conn.Open();
+                                string updateQuery = "UPDATE documents SET filedata = @filedata WHERE id = @id";
+                                using (var cmd = new MySqlCommand(updateQuery, conn))
+                                {
+                                    cmd.Parameters.AddWithValue("@filedata", file.fileData);
+                                    cmd.Parameters.AddWithValue("@id", file.id);
+                                    cmd.ExecuteNonQuery();
+                                }
+                            }
                         }
                     }
                 }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Ошибка при обновлении документов в базе: " + ex.Message,
+                        "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
-
-            return result;
+            originalAttachedFiles = null;
         }
+
+        //    private List<(int id, string fileName, byte[] fileData, string fileType, string fileHash)>
+        //LoadDocumentsFromDatabase(int messageId)
+        //    {
+        //        var result = new List<(int, string, byte[], string, string)>();
+
+        //        using (var conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+        //        {
+        //            conn.Open();
+        //            string query = "SELECT id, filename, filedata, filetype FROM documents WHERE message_id = @messageId";
+        //            using (var cmd = new MySqlCommand(query, conn))
+        //            {
+        //                cmd.Parameters.AddWithValue("@messageId", messageId);
+        //                using (var reader = cmd.ExecuteReader())
+        //                {
+        //                    while (reader.Read())
+        //                    {
+        //                        result.Add((
+        //                            reader.GetInt32("id"),
+        //                            reader.GetString("filename"),
+        //                            (byte[])reader["filedata"],
+        //                            reader.GetString("filetype"),
+        //                            "" // пустой fileHash, которого нет в БД
+        //                        ));
+        //                    }
+        //                }
+        //            }
+        //        }
+
+        //        return result;
+        //    }
 
         private void очиститьСписокПрикреплённыхСообщенийToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -1836,8 +2195,17 @@ WHERE id = @draftId";
                 Height = 240
             };
 
-            foreach (var file in files)
-                listBox.Items.Add(file.fileName);
+            // Получаем отображаемые имена с размерами (если дублируются)
+            var displayNamesWithIds = GetDisplayNamesWithSizes(files);
+
+            // Сопоставим отображаемое имя с ID для последующего удаления
+            Dictionary<string, int> displayNameToId = new Dictionary<string, int>();
+
+            foreach (var (displayName, id) in displayNamesWithIds)
+            {
+                listBox.Items.Add(displayName);
+                displayNameToId[displayName] = id;
+            }
 
             Button deleteButton = new Button()
             {
@@ -1865,45 +2233,136 @@ WHERE id = @draftId";
 
             if (dialog.ShowDialog() == DialogResult.OK)
             {
-                var selectedFiles = listBox.CheckedItems.Cast<string>().ToList();
+                var selectedDisplayNames = listBox.CheckedItems.Cast<string>().ToList();
 
-                foreach (var selectedFileName in selectedFiles)
+                foreach (var displayName in selectedDisplayNames)
                 {
-                    var selectedFile = files.FirstOrDefault(f => f.fileName == selectedFileName);
-                    if (selectedFile.fileData != null)
+                    if (displayNameToId.TryGetValue(displayName, out int id))
                     {
-                        try
+                        var selectedFile = files.FirstOrDefault(f => f.id == id);
+
+                        if (selectedFile.fileData != null)
                         {
-                            if (selectedFile.id != -1)
+                            try
                             {
-                                // Удаляем из базы по id
-                                using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                                if (selectedFile.id != -1)
                                 {
-                                    conn.Open();
-
-                                    string query = "DELETE FROM documents WHERE id = @id";
-
-                                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                                    // Удаляем из базы по id
+                                    using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
                                     {
-                                        cmd.Parameters.AddWithValue("@id", selectedFile.id);
-                                        cmd.ExecuteNonQuery();
+                                        conn.Open();
+
+                                        string query = "DELETE FROM documents WHERE id = @id";
+
+                                        using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                                        {
+                                            cmd.Parameters.AddWithValue("@id", selectedFile.id);
+                                            cmd.ExecuteNonQuery();
+                                        }
                                     }
                                 }
-                            }
 
-                            // Удаляем локально из списка и UI
-                            attachedFiles.Remove(selectedFile);
-                            comboBox3.Items.Remove(selectedFile.fileName);
-                        }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show("Ошибка при удалении файла: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                // Удаляем локально из списка и UI
+                                attachedFiles.Remove(selectedFile);
+                                comboBox3.Items.Remove(selectedFile.fileName);
+                            }
+                            catch (Exception ex)
+                            {
+                                MessageBox.Show("Ошибка при удалении файла: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
                         }
                     }
                 }
 
                 MessageBox.Show("Выбранные документы были удалены!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
+            //Form dialog = new Form()
+            //{
+            //    Width = 400,
+            //    Height = 350,
+            //    FormBorderStyle = FormBorderStyle.FixedDialog,
+            //    Text = "Выбор документов для удаления",
+            //    StartPosition = FormStartPosition.CenterParent,
+            //    MaximizeBox = false,
+            //    MinimizeBox = false
+            //};
+
+            //CheckedListBox listBox = new CheckedListBox()
+            //{
+            //    Left = 10,
+            //    Top = 10,
+            //    Width = 360,
+            //    Height = 240
+            //};
+
+            //foreach (var file in files)
+            //    listBox.Items.Add(file.fileName);
+
+            //Button deleteButton = new Button()
+            //{
+            //    Text = "Удалить",
+            //    Left = 200,
+            //    Width = 80,
+            //    Top = 265,
+            //    DialogResult = DialogResult.OK
+            //};
+
+            //Button cancelButton = new Button()
+            //{
+            //    Text = "Отмена",
+            //    Left = 290,
+            //    Width = 80,
+            //    Top = 265,
+            //    DialogResult = DialogResult.Cancel
+            //};
+
+            //dialog.Controls.Add(listBox);
+            //dialog.Controls.Add(deleteButton);
+            //dialog.Controls.Add(cancelButton);
+            //dialog.AcceptButton = deleteButton;
+            //dialog.CancelButton = cancelButton;
+
+            //if (dialog.ShowDialog() == DialogResult.OK)
+            //{
+            //    var selectedFiles = listBox.CheckedItems.Cast<string>().ToList();
+
+            //    foreach (var selectedFileName in selectedFiles)
+            //    {
+            //        var selectedFile = files.FirstOrDefault(f => f.fileName == selectedFileName);
+            //        if (selectedFile.fileData != null)
+            //        {
+            //            try
+            //            {
+            //                if (selectedFile.id != -1)
+            //                {
+            //                    // Удаляем из базы по id
+            //                    using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            //                    {
+            //                        conn.Open();
+
+            //                        string query = "DELETE FROM documents WHERE id = @id";
+
+            //                        using (MySqlCommand cmd = new MySqlCommand(query, conn))
+            //                        {
+            //                            cmd.Parameters.AddWithValue("@id", selectedFile.id);
+            //                            cmd.ExecuteNonQuery();
+            //                        }
+            //                    }
+            //                }
+
+            //                // Удаляем локально из списка и UI
+            //                attachedFiles.Remove(selectedFile);
+            //                comboBox3.Items.Remove(selectedFile.fileName);
+            //            }
+            //            catch (Exception ex)
+            //            {
+            //                MessageBox.Show("Ошибка при удалении файла: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            //            }
+            //        }
+            //    }
+
+            //    MessageBox.Show("Выбранные документы были удалены!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            //}
         }
     }
 }

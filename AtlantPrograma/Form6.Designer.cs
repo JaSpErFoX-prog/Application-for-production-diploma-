@@ -345,19 +345,19 @@
             this.ответитьToolStripMenuItem1,
             this.прочитатьToolStripMenuItem1});
             this.contextMenuStrip2.Name = "contextMenuStrip2";
-            this.contextMenuStrip2.Size = new System.Drawing.Size(211, 80);
+            this.contextMenuStrip2.Size = new System.Drawing.Size(153, 52);
             // 
             // ответитьToolStripMenuItem1
             // 
             this.ответитьToolStripMenuItem1.Name = "ответитьToolStripMenuItem1";
-            this.ответитьToolStripMenuItem1.Size = new System.Drawing.Size(210, 24);
+            this.ответитьToolStripMenuItem1.Size = new System.Drawing.Size(152, 24);
             this.ответитьToolStripMenuItem1.Text = "Ответить";
             this.ответитьToolStripMenuItem1.Click += new System.EventHandler(this.ответитьToolStripMenuItem1_Click);
             // 
             // прочитатьToolStripMenuItem1
             // 
             this.прочитатьToolStripMenuItem1.Name = "прочитатьToolStripMenuItem1";
-            this.прочитатьToolStripMenuItem1.Size = new System.Drawing.Size(210, 24);
+            this.прочитатьToolStripMenuItem1.Size = new System.Drawing.Size(152, 24);
             this.прочитатьToolStripMenuItem1.Text = "Прочитать";
             this.прочитатьToolStripMenuItem1.Click += new System.EventHandler(this.прочитатьToolStripMenuItem1_Click);
             // 

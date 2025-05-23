@@ -233,6 +233,7 @@ ORDER BY m.id DESC";
             {
                 string senderUsername = dataGridView1.SelectedRows[0].Cells["sender"].Value.ToString();
                 string subject = dataGridView1.SelectedRows[0].Cells["subject"].Value.ToString();
+                int messageId = Convert.ToInt32(dataGridView1.SelectedRows[0].Cells["message_id"].Value); // ← просто добавили
 
                 using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
                 {
@@ -251,7 +252,7 @@ ORDER BY m.id DESC";
                         {
                             string body = reader.GetString("body");
 
-                            Form7 readForm = new Form7(currentUser);
+                            Form7 readForm = new Form7(currentUser, messageId); // ← передаём messageId
                             readForm.LoadReadOnlyMessage(subject, body, senderUsername);
                             readForm.ShowDialog();
                         }
@@ -265,10 +266,50 @@ ORDER BY m.id DESC";
                     updateCmd.Parameters.AddWithValue("@subject", subject);
                     updateCmd.ExecuteNonQuery();
                 }
-
                 LoadIncomingMessages(); // Обновляем таблицу
                 ShowNotificationCount(); // обновить счётчик
             }
+
+            //if (dataGridView1.SelectedRows.Count > 0)
+            //{
+            //    string senderUsername = dataGridView1.SelectedRows[0].Cells["sender"].Value.ToString();
+            //    string subject = dataGridView1.SelectedRows[0].Cells["subject"].Value.ToString();
+
+            //    using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            //    {
+            //        conn.Open();
+
+            //        // Считываем тело письма
+            //        string query = "SELECT body FROM messages WHERE sender = @sender AND recipient = @recipient AND subject = @subject AND is_read = 0 LIMIT 1";
+            //        MySqlCommand cmd = new MySqlCommand(query, conn);
+            //        cmd.Parameters.AddWithValue("@sender", senderUsername);
+            //        cmd.Parameters.AddWithValue("@recipient", currentUser);
+            //        cmd.Parameters.AddWithValue("@subject", subject);
+            //        //int messageId = Convert.ToInt32(selectedRow.Cells["message_id"].Value);
+            //        using (MySqlDataReader reader = cmd.ExecuteReader())
+            //        {
+            //            if (reader.Read())
+            //            {
+            //                string body = reader.GetString("body");
+
+            //                Form7 readForm = new Form7(currentUser);
+            //                readForm.LoadReadOnlyMessage(subject, body, senderUsername);
+            //                readForm.ShowDialog();
+            //            }
+            //        }
+
+            //        // Обновляем флаг прочтения
+            //        string updateQuery = "UPDATE messages SET is_read = 1 WHERE sender = @sender AND recipient = @recipient AND subject = @subject";
+            //        MySqlCommand updateCmd = new MySqlCommand(updateQuery, conn);
+            //        updateCmd.Parameters.AddWithValue("@sender", senderUsername);
+            //        updateCmd.Parameters.AddWithValue("@recipient", currentUser);
+            //        updateCmd.Parameters.AddWithValue("@subject", subject);
+            //        updateCmd.ExecuteNonQuery();
+            //    }
+
+            //    LoadIncomingMessages(); // Обновляем таблицу
+            //    ShowNotificationCount(); // обновить счётчик
+            //}
         }
 
         private void button7_Click(object sender, EventArgs e)
@@ -1499,7 +1540,7 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
 
                 string originalBody = GetMessageBodyById(messageId); // <-- получаем текст через отдельный метод
 
-                Form7 replyForm = new Form7(currentUser); // currentUser — это тот, кто отвечает
+                Form7 replyForm = new Form7(currentUser, messageId); // currentUser — это тот, кто отвечает
 
                 // Устанавливаем получателя, тему и оригинальный текст
                 replyForm.SetReplyMode(
@@ -1986,6 +2027,7 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
             {
                 string senderUsername = dataGridView1.SelectedRows[0].Cells["sender"].Value.ToString();
                 string subject = dataGridView1.SelectedRows[0].Cells["subject"].Value.ToString();
+                int messageId = Convert.ToInt32(dataGridView1.SelectedRows[0].Cells["message_id"].Value); // ← просто добавили
 
                 using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
                 {
@@ -2004,8 +2046,9 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
                         {
                             string body = reader.GetString("body");
 
-                            Form7 readForm = new Form7(currentUser);
+                            Form7 readForm = new Form7(currentUser, messageId);
                             readForm.LoadReadOnlyMessage(subject, body, senderUsername);
+                            //readForm.comboBox3.Text = "Прикреплённые документы:";
                             readForm.ShowDialog();
                         }
                         else
