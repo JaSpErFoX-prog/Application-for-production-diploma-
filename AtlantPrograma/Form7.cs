@@ -71,12 +71,15 @@ namespace AtlantPrograma
                 if (openedDraftId != null)
                 {
                     bool hasChanges = false;
+                    UpdateComboBox3(); // Обновляем список документов (если надо)
 
                     try
                     {
                         using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
                         {
                             conn.Open();
+
+                            // 1. Проверка текста черновика
                             string query = "SELECT recipient, subject, body FROM drafts WHERE id = @id";
                             using (MySqlCommand cmd = new MySqlCommand(query, conn))
                             {
@@ -90,12 +93,63 @@ namespace AtlantPrograma
                                         string dbBody = reader.IsDBNull(2) ? "" : reader.GetString(2).Trim();
 
                                         if (dbRecipient != comboBox1.Text.Trim() ||
-                                    dbSubject != textBox1.Text.Trim() ||
-                                    dbBody != richTextBox1.Text.Trim())
+                                            dbSubject != textBox1.Text.Trim() ||
+                                            dbBody != richTextBox1.Text.Trim())
                                         {
                                             hasChanges = true;
                                         }
                                     }
+                                }
+                            }
+
+                            // 2. Проверка документов
+                            string docQuery = "SELECT id, filename, filedata FROM documents WHERE draft_id = @draftId AND is_draft = 1";
+                            Dictionary<int, Tuple<string, byte[]>> dbDocuments = new Dictionary<int, Tuple<string, byte[]>>();
+
+                            using (MySqlCommand cmd = new MySqlCommand(docQuery, conn))
+                            {
+                                cmd.Parameters.AddWithValue("@draftId", openedDraftId.Value);
+                                using (var reader = cmd.ExecuteReader())
+                                {
+                                    while (reader.Read())
+                                    {
+                                        int id = reader.GetInt32(reader.GetOrdinal("id"));
+                                        string filename = reader.GetString(reader.GetOrdinal("filename"));
+                                        byte[] filedata = (byte[])reader["filedata"];
+                                        dbDocuments[id] = Tuple.Create(filename, filedata);
+                                    }
+                                }
+                            }
+
+                            // Сравниваем с attachedFiles
+                            var uiDocumentIds = new HashSet<int>(attachedFiles.Select(f => f.id));
+
+                            // 2.1 Проверка удалённых документов
+                            foreach (int dbId in dbDocuments.Keys)
+                            {
+                                if (!uiDocumentIds.Contains(dbId))
+                                {
+                                    hasChanges = true; // Документ был удалён
+                                    break;
+                                }
+                            }
+
+                            // 2.2 Проверка добавленных и изменённых документов
+                            foreach (var file in attachedFiles)
+                            {
+                                if (file.id == 0 || !dbDocuments.ContainsKey(file.id))
+                                {
+                                    hasChanges = true; // Новый документ
+                                    break;
+                                }
+
+                                // Сравнение данных файла
+                                byte[] dbFileData = dbDocuments[file.id].Item2;
+                                if (file.fileData.Length != dbFileData.Length ||
+                                    !file.fileData.SequenceEqual(dbFileData))
+                                {
+                                    hasChanges = true; // Изменён документ
+                                    break;
                                 }
                             }
                         }
@@ -104,6 +158,41 @@ namespace AtlantPrograma
                     {
                         MessageBox.Show("Ошибка при проверке изменений черновика: " + ex.Message);
                     }
+
+                    //bool hasChanges = false;
+                    //UpdateComboBox3();
+                    //try
+                    //{
+                    //    using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                    //    {
+                    //        conn.Open();
+                    //        string query = "SELECT recipient, subject, body FROM drafts WHERE id = @id";
+                    //        using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    //        {
+                    //            cmd.Parameters.AddWithValue("@id", openedDraftId.Value);
+                    //            using (MySqlDataReader reader = cmd.ExecuteReader())
+                    //            {
+                    //                if (reader.Read())
+                    //                {
+                    //                    string dbRecipient = reader.IsDBNull(0) ? "" : reader.GetString(0).Trim();
+                    //                    string dbSubject = reader.IsDBNull(1) ? "" : reader.GetString(1).Trim();
+                    //                    string dbBody = reader.IsDBNull(2) ? "" : reader.GetString(2).Trim();
+
+                    //                    if (dbRecipient != comboBox1.Text.Trim() ||
+                    //                dbSubject != textBox1.Text.Trim() ||
+                    //                dbBody != richTextBox1.Text.Trim())
+                    //                    {
+                    //                        hasChanges = true;
+                    //                    }
+                    //                }
+                    //            }
+                    //        }
+                    //    }
+                    //}
+                    //catch (Exception ex)
+                    //{
+                    //    MessageBox.Show("Ошибка при проверке изменений черновика: " + ex.Message);
+                    //}
 
                     if (hasChanges && comboBox1.Text!="Поиск...")
                     {
@@ -118,6 +207,7 @@ namespace AtlantPrograma
                             UpdateDraft(); // Ниже покажу этот метод
                             MessageBox.Show("Изменения сохранены!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             this.Close();
+                            Task.Run(() => CleanOldTempDocuments());
                         }
                         else if (result == DialogResult.No)
                         {
@@ -153,7 +243,7 @@ namespace AtlantPrograma
                         // Найдём открытую форму Form6 и вызовем у неё метод
                         //Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
                         //form6?.LoadDraftMessages();
-
+                        Task.Run(() => CleanOldTempDocuments());
                         this.Close();
                     }
                     else if (saveDraft == DialogResult.No)
@@ -175,6 +265,7 @@ namespace AtlantPrograma
                     {
                         SaveDraft();
                         MessageBox.Show("Черновик сохранён успешно!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        Task.Run(() => CleanOldTempDocuments());
 
                         if (replyingToMessageId.HasValue)
                         {
@@ -245,6 +336,7 @@ namespace AtlantPrograma
                 {
                     conn.Open();
 
+                    // 1. Обновление черновика
                     string query = @"
                 UPDATE drafts
                 SET recipient = @recipient,
@@ -260,12 +352,119 @@ namespace AtlantPrograma
                         cmd.Parameters.AddWithValue("@recipient", comboBox1.Text.Trim());
                         cmd.Parameters.AddWithValue("@subject", textBox1.Text.Trim());
                         cmd.Parameters.AddWithValue("@body", richTextBox1.Text.Trim());
-                        cmd.Parameters.AddWithValue("@priority", comboBox2.Text); // Можно проверить на null
+                        cmd.Parameters.AddWithValue("@priority", comboBox2.Text);
                         cmd.Parameters.AddWithValue("@date", DateTime.Now.ToString("dd.MM.yyyy"));
                         cmd.Parameters.AddWithValue("@time", DateTime.Now.ToString("HH:mm:ss"));
                         cmd.Parameters.AddWithValue("@id", openedDraftId.Value);
-
                         cmd.ExecuteNonQuery();
+                    }
+
+                    // 2. Получаем все документы, связанные с черновиком из базы
+                    Dictionary<int, Tuple<string, byte[], string>> dbDocuments =
+                        new Dictionary<int, Tuple<string, byte[], string>>();
+
+                    string getDocsQuery = "SELECT id, filename, filedata, filetype FROM documents WHERE draft_id = @draftId AND is_draft = 1";
+
+                    using (MySqlCommand getDocsCmd = new MySqlCommand(getDocsQuery, conn))
+                    {
+                        getDocsCmd.Parameters.AddWithValue("@draftId", openedDraftId.Value);
+                        using (var reader = getDocsCmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                int docId = reader.GetInt32("id");
+                                string fileName = reader.GetString("filename");
+                                byte[] fileData = (byte[])reader["filedata"];
+                                string fileType = reader.GetString("filetype");
+
+                                dbDocuments[docId] = Tuple.Create(fileName, fileData, fileType);
+                            }
+                        }
+                    }
+
+                    // 3. Получаем список текущих ID документов из интерфейса
+                    List<int> uiDocIds = new List<int>();
+                    foreach (var file in attachedFiles)
+                    {
+                        if (file.id != 0)
+                            uiDocIds.Add(file.id);
+                    }
+
+                    // 4. Удаление документов из базы, которых больше нет в интерфейсе
+                    foreach (int dbId in dbDocuments.Keys)
+                    {
+                        if (!uiDocIds.Contains(dbId))
+                        {
+                            string deleteQuery = "DELETE FROM documents WHERE id = @id";
+                            using (MySqlCommand deleteCmd = new MySqlCommand(deleteQuery, conn))
+                            {
+                                deleteCmd.Parameters.AddWithValue("@id", dbId);
+                                deleteCmd.ExecuteNonQuery();
+                            }
+                        }
+                    }
+
+                    // 5. Обновление и вставка документов
+                    for (int i = 0; i < attachedFiles.Count; i++)
+                    {
+                        var file = attachedFiles[i];
+
+                        if (file.id != 0 && dbDocuments.ContainsKey(file.id))
+                        {
+                            // Обновление существующего документа
+                            string updateQuery = "UPDATE documents SET filedata = @filedata WHERE id = @id";
+                            using (MySqlCommand updateCmd = new MySqlCommand(updateQuery, conn))
+                            {
+                                updateCmd.Parameters.AddWithValue("@filedata", file.fileData);
+                                updateCmd.Parameters.AddWithValue("@id", file.id);
+                                updateCmd.ExecuteNonQuery();
+                            }
+                        }
+                        else
+                        {
+                            // Попытка загрузить изменённый файл из TempDocuments
+                            string tempPath = Path.Combine("TempDocuments", file.fileName);
+                            byte[] updatedData = file.fileData;
+
+                            if (File.Exists(tempPath))
+                            {
+                                updatedData = File.ReadAllBytes(tempPath);
+                            }
+
+                            // Вставка нового документа
+                            string insertQuery = @"
+            INSERT INTO documents (filename, filedata, filetype, draft_id, is_draft)
+            VALUES (@filename, @filedata, @filetype, @draftId, 1)";
+                            using (MySqlCommand insertCmd = new MySqlCommand(insertQuery, conn))
+                            {
+                                insertCmd.Parameters.AddWithValue("@filename", file.fileName);
+                                insertCmd.Parameters.AddWithValue("@filedata", updatedData);
+                                insertCmd.Parameters.AddWithValue("@filetype", file.fileType ?? "");
+                                insertCmd.Parameters.AddWithValue("@draftId", openedDraftId.Value);
+                                insertCmd.ExecuteNonQuery();
+                            }
+                        }
+                    }
+
+
+                    // 6. Обновляем список attachedFiles из базы данных
+                    attachedFiles.Clear();
+                    using (MySqlCommand refreshCmd = new MySqlCommand(getDocsQuery, conn))
+                    {
+                        refreshCmd.Parameters.AddWithValue("@draftId", openedDraftId.Value);
+                        using (var reader = refreshCmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                int id = reader.GetInt32("id");
+                                string name = reader.GetString("filename");
+                                byte[] data = (byte[])reader["filedata"];
+                                string type = reader.GetString("filetype");
+                                string hash = ""; // Если нужен хеш — нужно рассчитать отдельно
+
+                                attachedFiles.Add((id, name, data, type, hash));
+                            }
+                        }
                     }
                 }
             }
@@ -273,6 +472,41 @@ namespace AtlantPrograma
             {
                 MessageBox.Show("Ошибка при обновлении черновика: " + ex.Message);
             }
+
+            //try
+            //{
+            //    using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            //    {
+            //        conn.Open();
+
+            //        string query = @"
+            //    UPDATE drafts
+            //    SET recipient = @recipient,
+            //        subject = @subject,
+            //        body = @body,
+            //        priority = @priority,
+            //        date_created = @date,
+            //        time_created = @time
+            //    WHERE id = @id";
+
+            //        using (MySqlCommand cmd = new MySqlCommand(query, conn))
+            //        {
+            //            cmd.Parameters.AddWithValue("@recipient", comboBox1.Text.Trim());
+            //            cmd.Parameters.AddWithValue("@subject", textBox1.Text.Trim());
+            //            cmd.Parameters.AddWithValue("@body", richTextBox1.Text.Trim());
+            //            cmd.Parameters.AddWithValue("@priority", comboBox2.Text); // Можно проверить на null
+            //            cmd.Parameters.AddWithValue("@date", DateTime.Now.ToString("dd.MM.yyyy"));
+            //            cmd.Parameters.AddWithValue("@time", DateTime.Now.ToString("HH:mm:ss"));
+            //            cmd.Parameters.AddWithValue("@id", openedDraftId.Value);
+
+            //            cmd.ExecuteNonQuery();
+            //        }
+            //    }
+            //}
+            //catch (Exception ex)
+            //{
+            //    MessageBox.Show("Ошибка при обновлении черновика: " + ex.Message);
+            //}
         }
 
         private void SaveDraft()
@@ -289,6 +523,8 @@ namespace AtlantPrograma
                 using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
                 {
                     conn.Open();
+
+                    // 1. Сохраняем черновик
                     string query = "INSERT INTO drafts (sender, recipient, subject, body, priority, date_created, time_created) " +
                                    "VALUES (@sender, @recipient, @subject, @body, @priority, @date, @time)";
                     MySqlCommand cmd = new MySqlCommand(query, conn);
@@ -299,14 +535,99 @@ namespace AtlantPrograma
                     cmd.Parameters.AddWithValue("@priority", priority);
                     cmd.Parameters.AddWithValue("@date", dateCreated);
                     cmd.Parameters.AddWithValue("@time", timeCreated);
-
                     cmd.ExecuteNonQuery();
+
+                    long insertedDraftId = cmd.LastInsertedId;
+
+                    // 2. Обновляем is_draft = 1 для документов, уже привязанных к CurrentsmessageId
+                    if (CurrentsmessageId != -1)
+                    {
+                        string updateQuery = "UPDATE documents SET is_draft = 1 WHERE message_id = @msgId";
+                        using (MySqlCommand updateCmd = new MySqlCommand(updateQuery, conn))
+                        {
+                            updateCmd.Parameters.AddWithValue("@msgId", CurrentsmessageId);
+                            updateCmd.ExecuteNonQuery();
+                        }
+                    }
+
+                    // 3. Добавляем новые документы, прикреплённые к этому черновику
+                    foreach (var file in attachedFiles)
+                    {
+                        if (file.id != -1) // Это новый прикреплённый документ
+                        {
+                            byte[] actualFileData = null;
+                            string uniqueKey = $"{file.fileHash}_{file.fileName}";
+
+                            // 1. Пробуем взять актуальные данные из временного файла
+                            if (tempDocumentPaths.TryGetValue(uniqueKey, out string tempPath) && File.Exists(tempPath))
+                            {
+                                try
+                                {
+                                    actualFileData = File.ReadAllBytes(tempPath);
+                                }
+                                catch (Exception ex)
+                                {
+                                    MessageBox.Show($"Ошибка при чтении файла {file.fileName} из TempDocuments: {ex.Message}",
+                                        "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    actualFileData = file.fileData; // fallback
+                                }
+                            }
+                            else
+                            {
+                                actualFileData = file.fileData; // fallback
+                            }
+
+                            string insertDocQuery = "INSERT INTO documents (draft_id, filename, filedata, filetype, is_signed, is_draft) " +
+                                                    "VALUES (@draftId, @filename, @filedata, @filetype, @isSigned, 1)";
+                            using (MySqlCommand insertCmd = new MySqlCommand(insertDocQuery, conn))
+                            {
+                                insertCmd.Parameters.AddWithValue("@draftId", insertedDraftId);
+                                insertCmd.Parameters.AddWithValue("@filename", file.fileName);
+                                insertCmd.Parameters.AddWithValue("@filedata", actualFileData);
+                                insertCmd.Parameters.AddWithValue("@filetype", file.fileType);
+                                insertCmd.Parameters.AddWithValue("@isSigned", false);
+                                insertCmd.ExecuteNonQuery();
+                            }
+                        }
+                    }
+                    //MessageBox.Show("Черновик успешно сохранён!");
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Ошибка при сохранении черновика: " + ex.Message);
             }
+
+            //string recipient = comboBox1.SelectedItem?.ToString() ?? "";
+            //string subject = textBox1.Text.Trim();
+            //string body = richTextBox1.Text.Trim();
+            //string priority = comboBox2.SelectedItem?.ToString() ?? "Обычное сообщение";
+            //string dateCreated = DateTime.Now.ToString("dd.MM.yyyy");
+            //string timeCreated = DateTime.Now.ToString("HH:mm:ss");
+
+            //try
+            //{
+            //    using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            //    {
+            //        conn.Open();
+            //        string query = "INSERT INTO drafts (sender, recipient, subject, body, priority, date_created, time_created) " +
+            //                       "VALUES (@sender, @recipient, @subject, @body, @priority, @date, @time)";
+            //        MySqlCommand cmd = new MySqlCommand(query, conn);
+            //        cmd.Parameters.AddWithValue("@sender", senderUser);
+            //        cmd.Parameters.AddWithValue("@recipient", recipient);
+            //        cmd.Parameters.AddWithValue("@subject", subject);
+            //        cmd.Parameters.AddWithValue("@body", body);
+            //        cmd.Parameters.AddWithValue("@priority", priority);
+            //        cmd.Parameters.AddWithValue("@date", dateCreated);
+            //        cmd.Parameters.AddWithValue("@time", timeCreated);
+
+            //        cmd.ExecuteNonQuery();
+            //    }
+            //}
+            //catch (Exception ex)
+            //{
+            //    MessageBox.Show("Ошибка при сохранении черновика: " + ex.Message);
+            //}
         }
 
         private List<string> allUsernames = new List<string>();
@@ -478,43 +799,202 @@ namespace AtlantPrograma
             }
             try
             {
-                long insertedMessageId;
-                using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
-                {
-                    conn.Open();
-
-                    string query = "INSERT INTO messages (sender, recipient, subject, body, priority, date_sent, time_sent) " +
-                                   "VALUES (@sender, @recipient, @subject, @body, @priority, @date, @time)";
-                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    long insertedMessageId;
+                    using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
                     {
-                        cmd.Parameters.AddWithValue("@sender", senderUser);
-                        cmd.Parameters.AddWithValue("@recipient", recipient);
-                        cmd.Parameters.AddWithValue("@subject", subject);
-                        cmd.Parameters.AddWithValue("@body", body);
-                        cmd.Parameters.AddWithValue("@priority", priority);
-                        cmd.Parameters.AddWithValue("@date", dateSent);
-                        cmd.Parameters.AddWithValue("@time", timeSent);
+                        conn.Open();
 
-                        cmd.ExecuteNonQuery();
-                        insertedMessageId = cmd.LastInsertedId; // Вот здесь мы получаем ID
-                        CurrentsmessageId = (int)cmd.LastInsertedId;  // сохраняем ID в поле формы
+                        string query = "INSERT INTO messages (sender, recipient, subject, body, priority, date_sent, time_sent) " +
+                                       "VALUES (@sender, @recipient, @subject, @body, @priority, @date, @time)";
+                        using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@sender", senderUser);
+                            cmd.Parameters.AddWithValue("@recipient", recipient);
+                            cmd.Parameters.AddWithValue("@subject", subject);
+                            cmd.Parameters.AddWithValue("@body", body);
+                            cmd.Parameters.AddWithValue("@priority", priority);
+                            cmd.Parameters.AddWithValue("@date", dateSent);
+                            cmd.Parameters.AddWithValue("@time", timeSent);
+
+                            cmd.ExecuteNonQuery();
+                            insertedMessageId = cmd.LastInsertedId; // Вот здесь мы получаем ID
+                            CurrentsmessageId = (int)cmd.LastInsertedId;  // сохраняем ID в поле формы
+
+                        if (!openedDraftId.HasValue)
+                        {
+                            // ⬇️ Новый блок обработки файлов — вставить сюда ⬇️
+                            string tempDocumentsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TempDocuments");
+
+                            List<(int id, string fileName, byte[] fileData, string fileType, string fileHash)> updatedFiles =
+                                new List<(int, string, byte[], string, string)>();
 
 
-                        // ⬇️ Новый блок обработки файлов — вставить сюда ⬇️
+                            foreach (var file in attachedFiles)
+                            {
+                                byte[] actualData = null;
+
+                                // 🔧 Используем уникальный ключ (hash + имя файла)
+                                string uniqueKey = $"{file.fileHash}_{file.fileName}";
+
+                                // 1. Пробуем взять актуальные данные из временного файла
+                                if (tempDocumentPaths.TryGetValue(uniqueKey, out string tempPath) && File.Exists(tempPath))
+                                {
+                                    try
+                                    {
+                                        actualData = File.ReadAllBytes(tempPath);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        MessageBox.Show($"Ошибка при чтении файла {file.fileName} из TempDocuments: {ex.Message}",
+                                            "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                        actualData = file.fileData; // fallback
+                                    }
+                                }
+                                // 2. Если файл есть в базе (по ID), и временного файла нет — тянем актуальные данные из базы
+                                else if (file.id != 0)
+                                {
+                                    try
+                                    {
+                                        string fileQuery = "SELECT filedata FROM documents WHERE id = @id";
+                                        using (MySqlCommand fileCmd = new MySqlCommand(fileQuery, conn))
+                                        {
+                                            fileCmd.Parameters.AddWithValue("@id", file.id);
+                                            using (var reader = fileCmd.ExecuteReader())
+                                            {
+                                                if (reader.Read())
+                                                    actualData = (byte[])reader["filedata"];
+                                                else
+                                                    actualData = file.fileData; // fallback
+                                            }
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        MessageBox.Show($"Ошибка при загрузке файла {file.fileName} из базы данных: {ex.Message}",
+                                            "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                        actualData = file.fileData;
+                                    }
+                                }
+                                // 3. Если ни временного файла, ни ID — fallback на старые данные
+                                else
+                                {
+                                    actualData = file.fileData;
+                                }
+
+                                updatedFiles.Add((file.id, file.fileName, actualData, file.fileType, file.fileHash));
+                            }
+
+
+                            foreach (var file in updatedFiles)
+                            {
+                                string insertDocQuery = "INSERT INTO documents (message_id, filename, filedata, filetype, is_signed, is_draft, draft_id) " +
+                                                        "VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0, @draftId)";
+
+                                using (MySqlCommand docCmd = new MySqlCommand(insertDocQuery, conn))
+                                {
+                                    docCmd.Parameters.AddWithValue("@messageId", insertedMessageId);
+                                    docCmd.Parameters.AddWithValue("@filename", file.fileName);
+                                    docCmd.Parameters.AddWithValue("@filedata", file.fileData);
+                                    docCmd.Parameters.AddWithValue("@filetype", file.fileType);
+                                    docCmd.Parameters.AddWithValue("@isSigned", checkBox1.Checked);
+
+                                    // ❗ Явно передаём NULL, чтобы draft_id не нарушал внешний ключ
+                                    docCmd.Parameters.AddWithValue("@draftId", DBNull.Value);
+
+                                    docCmd.ExecuteNonQuery();
+                                }
+                            }
+                        }
+
+                            // Теперь вставляем все файлы с актуальными данными в базу
+                            //foreach (var file in updatedFiles)
+                            //{
+                            //    string insertDocQuery = "INSERT INTO documents (message_id, filename, filedata, filetype, is_signed, is_draft) " +
+                            //                            "VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0)";
+
+                            //    using (MySqlCommand docCmd = new MySqlCommand(insertDocQuery, conn))
+                            //    {
+                            //        docCmd.Parameters.AddWithValue("@messageId", insertedMessageId);
+                            //        docCmd.Parameters.AddWithValue("@filename", file.fileName);
+                            //        docCmd.Parameters.AddWithValue("@filedata", file.fileData);
+                            //        docCmd.Parameters.AddWithValue("@filetype", file.fileType);
+                            //        docCmd.Parameters.AddWithValue("@isSigned", checkBox1.Checked);
+                            //        docCmd.ExecuteNonQuery();
+                            //    }
+                            //}
+                        }
+
+                        Task.Run(() => CleanOldTempDocuments());
+
+                        originalAttachedFiles = null;
+
+                        documentEditCounter = 0;
+
+                        bool isFromRead = false;
+
+                        if (replyingToMessageId.HasValue)
+                        {
+                            // Получаем значение is_read по ID
+                            string checkReadQuery = "SELECT is_read FROM messages WHERE id = @id";
+                            using (MySqlCommand checkCmd = new MySqlCommand(checkReadQuery, conn))
+                            {
+                                checkCmd.Parameters.AddWithValue("@id", insertedMessageId);
+                                object result = checkCmd.ExecuteScalar();
+                                if (result != null && Convert.ToBoolean(result))
+                                {
+                                    isFromRead = true;
+                                }
+                            }
+
+                            // Обновляем is_sent, но уже сделали выше
+                            string updateQuery = "UPDATE messages SET is_sent = 1 WHERE id = @id";
+                            using (MySqlCommand updateCmd = new MySqlCommand(updateQuery, conn))
+                            {
+                                updateCmd.Parameters.AddWithValue("@id", insertedMessageId);
+                                updateCmd.ExecuteNonQuery();
+                            }
+
+                            // Обновляем is_sent, но уже сделали выше
+                            string updateQuery1 = "UPDATE messages SET is_sent = 0 WHERE id = @id";
+                            using (MySqlCommand updateCmd = new MySqlCommand(updateQuery1, conn))
+                            {
+                                updateCmd.Parameters.AddWithValue("@id", replyingToMessageId.Value);
+                                updateCmd.ExecuteNonQuery();
+                            }
+                        }
+                        else
+                        {
+                            string updateSentQuery = "UPDATE messages SET is_sent = 1 WHERE id = @id";
+                            using (MySqlCommand updateCmd = new MySqlCommand(updateSentQuery, conn))
+                            {
+                                updateCmd.Parameters.AddWithValue("@id", insertedMessageId);
+                                updateCmd.ExecuteNonQuery();
+                            }
+                        }
+                        bool isFromDraft = false;
+
+                        if (openedDraftId.HasValue)
+                        {
+                        isFromDraft = true;
+
+                        // Отмечаем черновик как отправленный
+                        string updateDraftQuery = "UPDATE drafts SET is_sent = 1 WHERE id = @id";
+                        using (MySqlCommand updateCmd = new MySqlCommand(updateDraftQuery, conn))
+                        {
+                            updateCmd.Parameters.AddWithValue("@id", openedDraftId.Value);
+                            updateCmd.ExecuteNonQuery();
+                        }
+
+                        // ⬇️ Обработка актуальных файлов ⬇️
                         string tempDocumentsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TempDocuments");
-
                         List<(int id, string fileName, byte[] fileData, string fileType, string fileHash)> updatedFiles =
                             new List<(int, string, byte[], string, string)>();
-
 
                         foreach (var file in attachedFiles)
                         {
                             byte[] actualData = null;
-
-                            // 🔧 Используем уникальный ключ (hash + имя файла)
                             string uniqueKey = $"{file.fileHash}_{file.fileName}";
 
-                            // 1. Пробуем взять актуальные данные из временного файла
                             if (tempDocumentPaths.TryGetValue(uniqueKey, out string tempPath) && File.Exists(tempPath))
                             {
                                 try
@@ -525,10 +1005,9 @@ namespace AtlantPrograma
                                 {
                                     MessageBox.Show($"Ошибка при чтении файла {file.fileName} из TempDocuments: {ex.Message}",
                                         "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                                    actualData = file.fileData; // fallback
+                                    actualData = file.fileData;
                                 }
                             }
-                            // 2. Если файл есть в базе (по ID), и временного файла нет — тянем актуальные данные из базы
                             else if (file.id != 0)
                             {
                                 try
@@ -542,7 +1021,7 @@ namespace AtlantPrograma
                                             if (reader.Read())
                                                 actualData = (byte[])reader["filedata"];
                                             else
-                                                actualData = file.fileData; // fallback
+                                                actualData = file.fileData;
                                         }
                                     }
                                 }
@@ -553,7 +1032,6 @@ namespace AtlantPrograma
                                     actualData = file.fileData;
                                 }
                             }
-                            // 3. Если ни временного файла, ни ID — fallback на старые данные
                             else
                             {
                                 actualData = file.fileData;
@@ -562,182 +1040,89 @@ namespace AtlantPrograma
                             updatedFiles.Add((file.id, file.fileName, actualData, file.fileType, file.fileHash));
                         }
 
-
-                        // Теперь вставляем все файлы с актуальными данными в базу
+                        // Обновляем существующие документы или вставляем новые
                         foreach (var file in updatedFiles)
                         {
-                            string insertDocQuery = "INSERT INTO documents (message_id, filename, filedata, filetype, is_signed, is_draft) " +
-                                                    "VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0)";
-
-                            using (MySqlCommand docCmd = new MySqlCommand(insertDocQuery, conn))
+                            if (file.id != 0)
                             {
-                                docCmd.Parameters.AddWithValue("@messageId", insertedMessageId);
-                                docCmd.Parameters.AddWithValue("@filename", file.fileName);
-                                docCmd.Parameters.AddWithValue("@filedata", file.fileData);
-                                docCmd.Parameters.AddWithValue("@filetype", file.fileType);
-                                docCmd.Parameters.AddWithValue("@isSigned", checkBox1.Checked);
-                                docCmd.ExecuteNonQuery();
+                                // Обновление существующего документа из черновика
+                                string updateDocQuery = @"
+UPDATE documents 
+SET message_id = @msgId, draft_id = NULL, is_draft = 0, 
+    filename = @filename, filedata = @filedata, filetype = @filetype, is_signed = @isSigned
+WHERE id = @docId";
+
+                                using (MySqlCommand updateCmd = new MySqlCommand(updateDocQuery, conn))
+                                {
+                                    updateCmd.Parameters.AddWithValue("@msgId", CurrentsmessageId);
+                                    updateCmd.Parameters.AddWithValue("@filename", file.fileName);
+                                    updateCmd.Parameters.AddWithValue("@filedata", file.fileData);
+                                    updateCmd.Parameters.AddWithValue("@filetype", file.fileType);
+                                    updateCmd.Parameters.AddWithValue("@isSigned", checkBox1.Checked);
+                                    updateCmd.Parameters.AddWithValue("@docId", file.id);
+                                    updateCmd.ExecuteNonQuery();
+                                }
+                            }
+                            else
+                            {
+                                // Вставка нового документа
+                                string insertDocQuery = @"
+INSERT INTO documents (message_id, filename, filedata, filetype, is_signed, is_draft, draft_id)
+VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0, NULL)";
+
+                                using (MySqlCommand docCmd = new MySqlCommand(insertDocQuery, conn))
+                                {
+                                    docCmd.Parameters.AddWithValue("@messageId", CurrentsmessageId);
+                                    docCmd.Parameters.AddWithValue("@filename", file.fileName);
+                                    docCmd.Parameters.AddWithValue("@filedata", file.fileData);
+                                    docCmd.Parameters.AddWithValue("@filetype", file.fileType);
+                                    docCmd.Parameters.AddWithValue("@isSigned", checkBox1.Checked);
+                                    docCmd.ExecuteNonQuery();
+                                }
                             }
                         }
 
-                        //foreach (var file in attachedFiles)
-                        //{
-                        //    byte[] actualData = null;
+                        // ❌ УДАЛЕНИЕ ДОКУМЕНТОВ УБРАНО ❌
 
-                        //    if (file.id > 0)
-                        //    {
-                        //        string selectQuery = "SELECT filedata FROM documents WHERE id = @docId LIMIT 1";
-                        //        using (MySqlCommand selectCmd = new MySqlCommand(selectQuery, conn))
-                        //        {
-                        //            selectCmd.Parameters.AddWithValue("@docId", file.id);
-                        //            using (MySqlDataReader reader = selectCmd.ExecuteReader())
-                        //            {
-                        //                if (reader.Read())
-                        //                {
-                        //                    actualData = (byte[])reader["filedata"];
-                        //                }
-                        //            }
-                        //        }
-                        //    }
-                        //    else
-                        //    {
-                        //        string tempPath = Path.Combine(tempDocumentsDir, file.fileName);
-                        //        if (File.Exists(tempPath))
-                        //        {
-                        //            try
-                        //            {
-                        //                actualData = File.ReadAllBytes(tempPath);
-                        //            }
-                        //            catch (Exception ex)
-                        //            {
-                        //                MessageBox.Show($"Ошибка при чтении файла {file.fileName} из TempDocuments: {ex.Message}",
-                        //                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        //            }
-                        //        }
-                        //    }
-
-                        //    updatedFiles.Add((file.id, file.fileName, actualData ?? file.fileData, file.fileType, file.fileHash));
-                        //}
-
-                        //foreach (var file in updatedFiles)
-                        //{
-                        //    string insertDocQuery = "INSERT INTO documents (message_id, filename, filedata, filetype, is_signed, is_draft) " +
-                        //                            "VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0)";
-
-                        //    using (MySqlCommand docCmd = new MySqlCommand(insertDocQuery, conn))
-                        //    {
-                        //        docCmd.Parameters.AddWithValue("@messageId", insertedMessageId);
-                        //        docCmd.Parameters.AddWithValue("@filename", file.fileName);
-                        //        docCmd.Parameters.AddWithValue("@filedata", file.fileData);
-                        //        docCmd.Parameters.AddWithValue("@filetype", file.fileType);
-                        //        docCmd.Parameters.AddWithValue("@isSigned", checkBox1.Checked);
-                        //        docCmd.ExecuteNonQuery();
-                        //    }
-                        //}
-
-                        //foreach (var file in attachedFiles)
-                        //{
-                        //    string insertDocQuery = "INSERT INTO documents (message_id, filename, filedata, filetype, is_signed, is_draft) " +
-                        //                            "VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0)";
-
-                        //    using (MySqlCommand docCmd = new MySqlCommand(insertDocQuery, conn))
-                        //    {
-                        //        docCmd.Parameters.AddWithValue("@messageId", insertedMessageId);
-                        //        docCmd.Parameters.AddWithValue("@filename", file.fileName);
-                        //        docCmd.Parameters.AddWithValue("@filedata", file.fileData); // уже актуальные данные
-                        //        docCmd.Parameters.AddWithValue("@filetype", file.fileType);
-                        //        docCmd.Parameters.AddWithValue("@isSigned", checkBox1.Checked);
-                        //        docCmd.ExecuteNonQuery();
-                        //    }
-                        //}
-                    }
-
-                    Task.Run(() => CleanOldTempDocuments());
-
-                    originalAttachedFiles = null;
-
-                    documentEditCounter = 0;
-
-                    bool isFromRead = false;
-
-                    if (replyingToMessageId.HasValue)
-                    {
-                        // Получаем значение is_read по ID
-                        string checkReadQuery = "SELECT is_read FROM messages WHERE id = @id";
-                        using (MySqlCommand checkCmd = new MySqlCommand(checkReadQuery, conn))
-                        {
-                            checkCmd.Parameters.AddWithValue("@id", insertedMessageId);
-                            object result = checkCmd.ExecuteScalar();
-                            if (result != null && Convert.ToBoolean(result))
-                            {
-                                isFromRead = true;
-                            }
-                        }
-
-                        // Обновляем is_sent, но уже сделали выше
-                        string updateQuery = "UPDATE messages SET is_sent = 1 WHERE id = @id";
-                        using (MySqlCommand updateCmd = new MySqlCommand(updateQuery, conn))
-                        {
-                            updateCmd.Parameters.AddWithValue("@id", insertedMessageId);
-                            updateCmd.ExecuteNonQuery();
-                        }
-
-                        // Обновляем is_sent, но уже сделали выше
-                        string updateQuery1 = "UPDATE messages SET is_sent = 0 WHERE id = @id";
-                        using (MySqlCommand updateCmd = new MySqlCommand(updateQuery1, conn))
-                        {
-                            updateCmd.Parameters.AddWithValue("@id", replyingToMessageId.Value);
-                            updateCmd.ExecuteNonQuery();
-                        }
-                    }
-                    else
-                    {
-                        string updateSentQuery = "UPDATE messages SET is_sent = 1 WHERE id = @id";
-                        using (MySqlCommand updateCmd = new MySqlCommand(updateSentQuery, conn))
-                        {
-                            updateCmd.Parameters.AddWithValue("@id", insertedMessageId);
-                            updateCmd.ExecuteNonQuery();
-                        }
-                    }
-                    bool isFromDraft = false;
-
-                    if (openedDraftId.HasValue)
-                    {
-                        isFromDraft = true;
-                        string updateDraftQuery = "UPDATE drafts SET is_sent = 1 WHERE id = @id";
-                        using (MySqlCommand updateCmd = new MySqlCommand(updateDraftQuery, conn))
-                        {
-                            updateCmd.Parameters.AddWithValue("@id", openedDraftId.Value);
-                            updateCmd.ExecuteNonQuery();
-                        }
+                        // Обновляем отображение черновиков
                         Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
                         form6?.LoadDraftMessages();
+
+                        //isFromDraft = true;
+                        //string updateDraftQuery = "UPDATE drafts SET is_sent = 1 WHERE id = @id";
+                        //using (MySqlCommand updateCmd = new MySqlCommand(updateDraftQuery, conn))
+                        //{
+                        //    updateCmd.Parameters.AddWithValue("@id", openedDraftId.Value);
+                        //    updateCmd.ExecuteNonQuery();
+                        //}
+                        //Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+                        //form6?.LoadDraftMessages();
                     }
 
-                    MessageBox.Show("Письмо успешно отправлено!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("Письмо успешно отправлено!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                    Form6 form6Notif = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+                        Form6 form6Notif = Application.OpenForms.OfType<Form6>().FirstOrDefault();
 
-                    if (isFromDraft)
-                    {
-                        // Ничего не обновляем дополнительно — уже обновили LoadDraftMessages()
-                    }
-                    else if (isFromRead)
-                    {
-                        form6Notif?.LoadReadMessages(); // если из Прочитанных
-                    }
-                    else if (!replyingToMessageId.HasValue)
-                    {
+                        if (isFromDraft)
+                        {
+                            // Ничего не обновляем дополнительно — уже обновили LoadDraftMessages()
+                        }
+                        else if (isFromRead)
+                        {
+                            form6Notif?.LoadReadMessages(); // если из Прочитанных
+                        }
+                        else if (!replyingToMessageId.HasValue)
+                        {
 
-                    }
-                    else
-                    {
-                        form6Notif?.ShowNotificationCount();
-                        form6Notif?.LoadIncomingMessages(); // если из Входящих
-                    }
+                        }
+                        else
+                        {
+                            form6Notif?.ShowNotificationCount();
+                            form6Notif?.LoadIncomingMessages(); // если из Входящих
+                        }
 
-                    this.Close();
-                }
+                        this.Close();
+                    }
             }
             catch (Exception ex)
             {
@@ -887,19 +1272,25 @@ namespace AtlantPrograma
             UpdateComboBox3ForReadOnly();
         }
 
+        //private Dictionary<string, string> tempFilesMap = new Dictionary<string, string>();
+
         public void LoadDraftForEditing(int draftId)
         {
-            // Курсор ставим в самое начало
-            //richTextBox1.SelectionStart = 0;
-            //richTextBox1.ScrollToCaret();
-            //isDraftMode = true;
+            предварительныйПросмотрДокументовToolStripMenuItem.Enabled = true;
+            скачатьВсеДокументыToolStripMenuItem.Enabled = true;
+            просмотретьДокументыToolStripMenuItem.Enabled = false;
+            сброситьИзмененияВДокументахToolStripMenuItem.Enabled = true;
+            очиститьСписокПрикреплённыхСообщенийToolStripMenuItem.Enabled = true;
 
             this.openedDraftId = draftId;
+
             try
             {
                 using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
                 {
                     conn.Open();
+
+                    // 1. Загрузка данных черновика
                     string query = @"
 SELECT recipient, subject, priority, body
 FROM drafts
@@ -912,94 +1303,230 @@ WHERE id = @draftId";
                     {
                         if (reader.Read())
                         {
-                            string recipient = reader.IsDBNull(reader.GetOrdinal("recipient")) ? "" : reader.GetString("recipient");
-                            string subject = reader.IsDBNull(reader.GetOrdinal("subject")) ? "" : reader.GetString("subject");
-                            string priority = reader.IsDBNull(reader.GetOrdinal("priority")) ? "" : reader.GetString("priority");
-                            string body = reader.IsDBNull(reader.GetOrdinal("body")) ? "" : reader.GetString("body");
+                            string recipient = !reader.IsDBNull(0) ? reader.GetString(0) : "";
+                            string subject = !reader.IsDBNull(1) ? reader.GetString(1) : "";
+                            string priority = !reader.IsDBNull(2) ? reader.GetString(2) : "";
+                            string body = !reader.IsDBNull(3) ? reader.GetString(3) : "";
 
-                            // Заполняем поля черновика
-                            // Проверяем, существует ли получатель в comboBox1
                             if (comboBox1.Items.Contains(recipient))
                             {
                                 comboBox1.SelectedItem = recipient;
-                                comboBox1.ForeColor = Color.Black;// Устанавливаем получателя
-                            }                           
-                            else if (comboBox1.Text=="Поиск...")
+                                comboBox1.ForeColor = Color.Black;
+                            }
+                            else if (comboBox1.Text == "Поиск...")
                             {
                                 comboBox1.ForeColor = Color.Gray;
-                                //comboBox1.Enter += comboBox1_Enter;
-                                //comboBox1.Leave += comboBox1_Leave;
-                                //comboBox1.TextChanged += comboBox1_TextChanged;
                             }
                             else
                             {
                                 comboBox1.Text = recipient;
-                                //comboBox1.ForeColor = Color.Black;// Если получатель не найден в списке, ставим как текст
                             }
-                            //comboBox1.ForeColor = Color.Black; // <-- сброс цвета на чёрный
-                            textBox1.Text = subject;              // Тема
-                            //richTextBox1.Text = body;             // Текст письма
-                                                                  // Проверяем на наличие пунктирной линии где угодно
-                            //string pattern = @"^\s*-{3,}\s*$"; // строка из 3 и более дефисов
+
+                            textBox1.Text = subject;
+
+                            // Обработка линии с дефисами
                             string[] lines = body.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
                             bool foundDashedLine = false;
-
                             for (int i = 0; i < lines.Length; i++)
                             {
-                                string trimmedLine = lines[i].Trim(); // убираем пробелы и невидимые символы
-
+                                string trimmedLine = lines[i].Trim();
                                 if (trimmedLine.All(c => c == '-') && trimmedLine.Length >= 5)
                                 {
                                     foundDashedLine = true;
-
-                                    // Вставляем отступ перед линией, если нужно
                                     if (i == 0 || !string.IsNullOrWhiteSpace(lines[i - 1]))
                                     {
                                         lines = lines.Take(i).Concat(new[] { "", "" }).Concat(lines.Skip(i)).ToArray();
                                     }
-
                                     break;
                                 }
                             }
 
-
                             richTextBox1.Text = string.Join(Environment.NewLine, lines);
-
                             if (foundDashedLine)
                             {
                                 richTextBox1.SelectionStart = 0;
                                 richTextBox1.ScrollToCaret();
                             }
-                            // Для приоритета
+
                             if (!string.IsNullOrEmpty(priority))
                             {
-                                // Проверим, существует ли этот приоритет в comboBox2
-                                if (comboBox2.Items.Contains(priority))
-                                {
-                                    comboBox2.SelectedItem = priority;
-                                }
-                                else
-                                {
-                                    // Если приоритет не найден, установим по умолчанию
-                                    comboBox2.SelectedItem = "Обычное сообщение";
-                                }
+                                comboBox2.SelectedItem = comboBox2.Items.Contains(priority)
+                                    ? priority
+                                    : "Обычное сообщение";
                             }
                             else
                             {
-                                comboBox2.SelectedItem = null; // Если приоритет пустой
+                                comboBox2.SelectedItem = null;
                             }
                         }
                         else
                         {
                             MessageBox.Show("Черновик не найден", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            return;
                         }
                     }
+
+                    // 2. Загрузка прикреплённых документов (без создания временных файлов)
+                    string docQuery = @"
+SELECT id, filename, filedata, filetype
+FROM documents
+WHERE draft_id = @draftId AND is_draft = 1";
+
+                    MySqlCommand docCmd = new MySqlCommand(docQuery, conn);
+                    docCmd.Parameters.AddWithValue("@draftId", draftId);
+
+                    // Сохраняем прикреплённые вручную файлы
+                    var manuallyAttached = attachedFiles.Where(f => f.id == 0).ToList();
+
+                    attachedFiles.Clear();
+                    comboBox3.Items.Clear();
+
+                    // Добавляем новые (ручные)
+                    foreach (var file in manuallyAttached)
+                    {
+                        attachedFiles.Add(file);
+                        if (!comboBox3.Items.Contains(file.fileName))
+                            comboBox3.Items.Add(file.fileName);
+                    }
+
+                    using (MySqlDataReader docReader = docCmd.ExecuteReader())
+                    {
+                        while (docReader.Read())
+                        {
+                            int docId = docReader.GetInt32(0);
+                            string fileName = docReader.GetString(1);
+                            byte[] fileData = (byte[])docReader[2];
+                            string fileType = !docReader.IsDBNull(3) ? docReader.GetString(3) : "";
+
+                            // Проверяем, не дублируем ли вручную добавленный файл
+                            if (!attachedFiles.Any(f => f.fileName == fileName && f.id == 0))
+                            {
+                                attachedFiles.Add((docId, fileName, fileData, fileType, ""));
+                                if (!comboBox3.Items.Contains(fileName))
+                                    comboBox3.Items.Add(fileName);
+                            }
+                        }
+                    }
+                    // 3. Обновление ComboBox с документами
+                    UpdateComboBox3();
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Ошибка при загрузке черновика: " + ex.Message);
             }
+
+            //            // Курсор ставим в самое начало
+            //            //richTextBox1.SelectionStart = 0;
+            //            //richTextBox1.ScrollToCaret();
+            //            //isDraftMode = true;
+
+            //            this.openedDraftId = draftId;
+            //            try
+            //            {
+            //                using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            //                {
+            //                    conn.Open();
+            //                    string query = @"
+            //SELECT recipient, subject, priority, body
+            //FROM drafts
+            //WHERE id = @draftId";
+
+            //                    MySqlCommand cmd = new MySqlCommand(query, conn);
+            //                    cmd.Parameters.AddWithValue("@draftId", draftId);
+
+            //                    using (MySqlDataReader reader = cmd.ExecuteReader())
+            //                    {
+            //                        if (reader.Read())
+            //                        {
+            //                            string recipient = reader.IsDBNull(reader.GetOrdinal("recipient")) ? "" : reader.GetString("recipient");
+            //                            string subject = reader.IsDBNull(reader.GetOrdinal("subject")) ? "" : reader.GetString("subject");
+            //                            string priority = reader.IsDBNull(reader.GetOrdinal("priority")) ? "" : reader.GetString("priority");
+            //                            string body = reader.IsDBNull(reader.GetOrdinal("body")) ? "" : reader.GetString("body");
+
+            //                            // Заполняем поля черновика
+            //                            // Проверяем, существует ли получатель в comboBox1
+            //                            if (comboBox1.Items.Contains(recipient))
+            //                            {
+            //                                comboBox1.SelectedItem = recipient;
+            //                                comboBox1.ForeColor = Color.Black;// Устанавливаем получателя
+            //                            }                           
+            //                            else if (comboBox1.Text=="Поиск...")
+            //                            {
+            //                                comboBox1.ForeColor = Color.Gray;
+            //                                //comboBox1.Enter += comboBox1_Enter;
+            //                                //comboBox1.Leave += comboBox1_Leave;
+            //                                //comboBox1.TextChanged += comboBox1_TextChanged;
+            //                            }
+            //                            else
+            //                            {
+            //                                comboBox1.Text = recipient;
+            //                                //comboBox1.ForeColor = Color.Black;// Если получатель не найден в списке, ставим как текст
+            //                            }
+            //                            //comboBox1.ForeColor = Color.Black; // <-- сброс цвета на чёрный
+            //                            textBox1.Text = subject;              // Тема
+            //                            //richTextBox1.Text = body;             // Текст письма
+            //                                                                  // Проверяем на наличие пунктирной линии где угодно
+            //                            //string pattern = @"^\s*-{3,}\s*$"; // строка из 3 и более дефисов
+            //                            string[] lines = body.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+            //                            bool foundDashedLine = false;
+
+            //                            for (int i = 0; i < lines.Length; i++)
+            //                            {
+            //                                string trimmedLine = lines[i].Trim(); // убираем пробелы и невидимые символы
+
+            //                                if (trimmedLine.All(c => c == '-') && trimmedLine.Length >= 5)
+            //                                {
+            //                                    foundDashedLine = true;
+
+            //                                    // Вставляем отступ перед линией, если нужно
+            //                                    if (i == 0 || !string.IsNullOrWhiteSpace(lines[i - 1]))
+            //                                    {
+            //                                        lines = lines.Take(i).Concat(new[] { "", "" }).Concat(lines.Skip(i)).ToArray();
+            //                                    }
+
+            //                                    break;
+            //                                }
+            //                            }
+
+
+            //                            richTextBox1.Text = string.Join(Environment.NewLine, lines);
+
+            //                            if (foundDashedLine)
+            //                            {
+            //                                richTextBox1.SelectionStart = 0;
+            //                                richTextBox1.ScrollToCaret();
+            //                            }
+            //                            // Для приоритета
+            //                            if (!string.IsNullOrEmpty(priority))
+            //                            {
+            //                                // Проверим, существует ли этот приоритет в comboBox2
+            //                                if (comboBox2.Items.Contains(priority))
+            //                                {
+            //                                    comboBox2.SelectedItem = priority;
+            //                                }
+            //                                else
+            //                                {
+            //                                    // Если приоритет не найден, установим по умолчанию
+            //                                    comboBox2.SelectedItem = "Обычное сообщение";
+            //                                }
+            //                            }
+            //                            else
+            //                            {
+            //                                comboBox2.SelectedItem = null; // Если приоритет пустой
+            //                            }
+            //                        }
+            //                        else
+            //                        {
+            //                            MessageBox.Show("Черновик не найден", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            //                        }
+            //                    }
+            //                }
+            //            }
+            //            catch (Exception ex)
+            //            {
+            //                MessageBox.Show("Ошибка при загрузке черновика: " + ex.Message);
+            //            }
         }
 
         //string originalText; // сделаем это полем класса, чтобы доступно было другим методам
@@ -1199,7 +1726,6 @@ WHERE id = @draftId";
 
             if (originalAttachedFiles.Count == 0)
             {
-                // Создаём копию текущего списка
                 originalAttachedFiles = attachedFiles
                     .Select(file => (file.id, file.fileName, (byte[])file.fileData.Clone(), file.fileType, file.fileHash))
                     .ToList();
@@ -1211,12 +1737,15 @@ WHERE id = @draftId";
 
             string connectionString = "server=localhost;user=root;password=1111;database=document_system;";
             HashSet<int> existingDocumentIds = new HashSet<int>();
+            HashSet<int> draftDocumentIds = new HashSet<int>();
 
-            if (CurrentsmessageId != 0)
+            using (var conn = new MySqlConnection(connectionString))
             {
-                using (var conn = new MySqlConnection(connectionString))
+                conn.Open();
+
+                // Загружаем ID документов из текущего сообщения (если это не черновик)
+                if (CurrentsmessageId != 0)
                 {
-                    conn.Open();
                     string query = "SELECT id FROM documents WHERE message_id = @msgId";
                     using (var cmd = new MySqlCommand(query, conn))
                     {
@@ -1225,6 +1754,21 @@ WHERE id = @draftId";
                         {
                             while (reader.Read())
                                 existingDocumentIds.Add(reader.GetInt32("id"));
+                        }
+                    }
+                }
+
+                // Загружаем ID документов, относящихся к черновику
+                if (openedDraftId != 0)
+                {
+                    string draftQuery = "SELECT id FROM documents WHERE draft_id = @draftId AND is_draft = 1";
+                    using (var cmd = new MySqlCommand(draftQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@draftId", openedDraftId);
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                                draftDocumentIds.Add(reader.GetInt32("id"));
                         }
                     }
                 }
@@ -1241,10 +1785,11 @@ WHERE id = @draftId";
 
                 int realId = file.id;
                 bool fileExistsInDb = existingDocumentIds.Contains(realId);
+                bool fileIsDraft = draftDocumentIds.Contains(realId);
 
                 try
                 {
-                    if (fileExistsInDb)
+                    if (fileExistsInDb || fileIsDraft)
                     {
                         using (var conn = new MySqlConnection(connectionString))
                         {
@@ -1275,21 +1820,17 @@ WHERE id = @draftId";
 
                     DateTime originalWriteTime = File.GetLastWriteTime(tempPath);
 
-                    // Запускаем документ
                     Process.Start(new ProcessStartInfo
                     {
                         FileName = tempPath,
                         UseShellExecute = true
                     });
 
-                    // ⏱ Добавляем небольшую задержку перед началом отслеживания
                     Task.Run(async () =>
                     {
                         documentEditCounter++;
+                        await Task.Delay(3000);
 
-                        await Task.Delay(3000); // Подождать, чтобы Word успел открыть файл
-
-                        // Ждём, пока файл перестанет использоваться
                         while (true)
                         {
                             try
@@ -1314,7 +1855,8 @@ WHERE id = @draftId";
                                     byte[] updatedData = File.ReadAllBytes(tempPath);
                                     file.fileData = updatedData;
 
-                                    if (fileExistsInDb)
+                                    // Обновляем содержимое файла в БД
+                                    if (fileExistsInDb || fileIsDraft)
                                     {
                                         using (var conn = new MySqlConnection(connectionString))
                                         {
@@ -1332,8 +1874,8 @@ WHERE id = @draftId";
                                     }
                                 }
 
-                                // Удаляем файл, когда он уже точно не используется
-                                if (fileExistsInDb)
+                                // Удаляем временный файл, если он уже есть в базе
+                                if (fileExistsInDb || fileIsDraft)
                                 {
                                     File.Delete(tempPath);
                                     tempDocumentPaths.Remove(uniqueKey);
@@ -1359,13 +1901,20 @@ WHERE id = @draftId";
 
             //if (attachedFiles.Count == 0)
             //{
-            //    MessageBox.Show("Нет доступных документов для предварительного просмотра",
-            //        "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            //    MessageBox.Show("Нет доступных документов для предварительного просмотра", "Информация",
+            //        MessageBoxButtons.OK, MessageBoxIcon.Information);
             //    return;
             //}
 
-            //List<int> selectedIds = ShowDocumentSelectionDialogWithIds(attachedFiles);
+            //if (originalAttachedFiles.Count == 0)
+            //{
+            //    // Создаём копию текущего списка
+            //    originalAttachedFiles = attachedFiles
+            //        .Select(file => (file.id, file.fileName, (byte[])file.fileData.Clone(), file.fileType, file.fileHash))
+            //        .ToList();
+            //}
 
+            //List<int> selectedIds = ShowDocumentSelectionDialogWithIds(attachedFiles);
             //if (selectedIds == null || selectedIds.Count == 0)
             //    return;
 
@@ -1384,9 +1933,7 @@ WHERE id = @draftId";
             //            using (var reader = cmd.ExecuteReader())
             //            {
             //                while (reader.Read())
-            //                {
             //                    existingDocumentIds.Add(reader.GetInt32("id"));
-            //                }
             //            }
             //        }
             //    }
@@ -1425,36 +1972,56 @@ WHERE id = @draftId";
             //        }
 
             //        string uniqueKey = $"{file.fileHash}_{file.fileName}";
-            //        string tempPath;
+            //        string tempDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TempDocuments");
+            //        Directory.CreateDirectory(tempDir);
+            //        string tempPath = Path.Combine(tempDir, uniqueKey);
 
-            //        if (!tempDocumentPaths.TryGetValue(uniqueKey, out tempPath))
+            //        if (!File.Exists(tempPath))
             //        {
-            //            string tempFileName = uniqueKey;
-            //            string tempDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TempDocuments");
-            //            Directory.CreateDirectory(tempDir);
-            //            tempPath = Path.Combine(tempDir, tempFileName);
-
             //            File.WriteAllBytes(tempPath, file.fileData);
             //            tempDocumentPaths[uniqueKey] = tempPath;
             //        }
 
             //        DateTime originalWriteTime = File.GetLastWriteTime(tempPath);
 
-            //        Process process = new Process();
-            //        process.StartInfo.FileName = tempPath;
-            //        process.StartInfo.UseShellExecute = true;
-            //        process.EnableRaisingEvents = true;
-
-            //        process.Exited += (s, ev) =>
+            //        // Запускаем документ
+            //        Process.Start(new ProcessStartInfo
             //        {
-            //            if (File.Exists(tempPath))
+            //            FileName = tempPath,
+            //            UseShellExecute = true
+            //        });
+
+            //        // ⏱ Добавляем небольшую задержку перед началом отслеживания
+            //        Task.Run(async () =>
+            //        {
+            //            documentEditCounter++;
+
+            //            await Task.Delay(3000); // Подождать, чтобы Word успел открыть файл
+
+            //            // Ждём, пока файл перестанет использоваться
+            //            while (true)
             //            {
-            //                DateTime newWriteTime = File.GetLastWriteTime(tempPath);
-            //                if (newWriteTime > originalWriteTime)
+            //                try
             //                {
-            //                    try
+            //                    using (FileStream stream = File.Open(tempPath, FileMode.Open, FileAccess.Read, FileShare.None)) { }
+            //                    break;
+            //                }
+            //                catch
+            //                {
+            //                    await Task.Delay(1000);
+            //                }
+            //            }
+
+            //            try
+            //            {
+            //                if (File.Exists(tempPath))
+            //                {
+            //                    DateTime newWriteTime = File.GetLastWriteTime(tempPath);
+
+            //                    if (newWriteTime > originalWriteTime)
             //                    {
             //                        byte[] updatedData = File.ReadAllBytes(tempPath);
+            //                        file.fileData = updatedData;
 
             //                        if (fileExistsInDb)
             //                        {
@@ -1470,38 +2037,27 @@ WHERE id = @draftId";
             //                                }
             //                            }
 
-            //                            file.fileData = updatedData;
             //                            Invoke(new Action(UpdateComboBox3));
             //                        }
-            //                        else
-            //                        {
-            //                            file.fileData = updatedData;
-            //                        }
             //                    }
-            //                    catch (Exception ex)
-            //                    {
-            //                        MessageBox.Show($"Не удалось сохранить изменения файла: {ex.Message}",
-            //                            "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            //                    }
-            //                }
 
-            //                try
-            //                {
+            //                    // Удаляем файл, когда он уже точно не используется
             //                    if (fileExistsInDb)
             //                    {
             //                        File.Delete(tempPath);
             //                        tempDocumentPaths.Remove(uniqueKey);
             //                    }
             //                }
-            //                catch (Exception ex)
-            //                {
-            //                    MessageBox.Show($"Не удалось удалить временный файл: {ex.Message}",
-            //                        "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            //                }
             //            }
-            //        };
-
-            //        process.Start();
+            //            catch (Exception ex)
+            //            {
+            //                Invoke(new Action(() =>
+            //                {
+            //                    MessageBox.Show($"Ошибка при обработке документа: {ex.Message}",
+            //                        "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            //                }));
+            //            }
+            //        });
             //    }
             //    catch (Exception ex)
             //    {
