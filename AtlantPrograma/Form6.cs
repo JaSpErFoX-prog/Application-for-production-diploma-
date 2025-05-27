@@ -92,6 +92,7 @@ namespace AtlantPrograma
             отправитьВсемToolStripMenuItem1.Enabled = true;
             действияСЧерновикамиToolStripMenuItem.Enabled = false;
             переслатьСообщенияToolStripMenuItem.Enabled = true;
+            восстановитьПрочитанноеToolStripMenuItem.Enabled = false;
         }
         public void ShowNotificationCount()
         {
@@ -635,7 +636,7 @@ WHERE
     m.recipient = @username 
     AND m.is_deleted = 1 
     AND m.is_draft = 0 
-    AND m.is_sent = 0
+    AND m.is_sent = 1
 ORDER BY m.id DESC";
 
                 MySqlCommand cmd = new MySqlCommand(query, conn);
@@ -1613,7 +1614,7 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
                 return;
             }
 
-            string currentUserLogin = currentUser; // <- Замени на актуального пользователя
+            string currentUserLogin = currentUser; // <- актуальный пользователь
             if (selectedRecipient == currentUserLogin)
             {
                 MessageBox.Show("Нельзя пересылать сообщения самому себе", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -1628,7 +1629,7 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
 
                     foreach (int id in selectedMessageIds)
                     {
-                        string selectQuery = "SELECT sender, subject, body, priority, is_read, is_sent, is_deleted FROM messages WHERE id = @id";
+                        string selectQuery = "SELECT sender, subject, body, priority FROM messages WHERE id = @id";
                         using (MySqlCommand selectCmd = new MySqlCommand(selectQuery, conn))
                         {
                             selectCmd.Parameters.AddWithValue("@id", id);
@@ -1640,73 +1641,128 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
                                     string subject = reader.GetString("subject");
                                     string body = reader.GetString("body");
                                     string priority = reader.GetString("priority");
-                                    bool is_read = reader.GetBoolean("is_read");
-                                    bool is_sent = reader.GetBoolean("is_sent");
-                                    bool is_deleted = reader.GetBoolean("is_deleted");
-
-                                    // Формируем тело пересланного сообщения
-                                    body = $"--- Пересланное сообщение ---\n\nОт: {originalSender}\nТема: {subject}\nТекст:\n{body}\n\n";
 
                                     reader.Close();
 
-                                    // Проверка, не пересылалось ли уже такое сообщение этому же получателю
+                                    // Формируем тело пересланного сообщения
+                                    string fwdBody = $"--- Пересланное сообщение ---\n\nОт: {originalSender}\nТема: {subject}\nТекст:\n{body}\n\n";
+
+                                    // Проверка, не пересылалось ли уже такое сообщение этому получателю
                                     string checkQuery = @"SELECT COUNT(*) FROM messages 
-                                              WHERE sender = @sender 
-                                              AND recipient = @recipient 
-                                              AND subject = @subject 
-                                              AND body = @body 
-                                              AND is_deleted = 0";
+                                                  WHERE sender = @sender 
+                                                    AND recipient = @recipient 
+                                                    AND subject = @subject 
+                                                    AND body = @body 
+                                                    AND is_deleted = 0";
                                     using (MySqlCommand checkCmd = new MySqlCommand(checkQuery, conn))
                                     {
                                         checkCmd.Parameters.AddWithValue("@sender", currentUserLogin);
                                         checkCmd.Parameters.AddWithValue("@recipient", selectedRecipient);
                                         checkCmd.Parameters.AddWithValue("@subject", subject);
-                                        checkCmd.Parameters.AddWithValue("@body", body);
+                                        checkCmd.Parameters.AddWithValue("@body", fwdBody);
 
                                         int count = Convert.ToInt32(checkCmd.ExecuteScalar());
 
-                                        // Если сообщение уже существует в базе, пропускаем пересылку
                                         if (count > 0)
                                         {
                                             MessageBox.Show("Это сообщение уже было переслано данному пользователю", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                            return; // Пропускаем пересылку этого сообщения
+                                            continue; // Пропускаем пересылку этого сообщения, но не прерываем цикл
                                         }
                                     }
 
                                     // Вставка пересланного сообщения с текущей датой/временем
                                     string insertQuery = @"INSERT INTO messages 
-                                                (sender, recipient, subject, body, priority, date_sent, time_sent, is_read, is_sent, is_deleted) 
-                                                VALUES 
-                                                (@sender, @recipient, @subject, @body, @priority, @date_sent, @time_sent, @is_read, @is_sent, @is_deleted)";
+                                                   (sender, recipient, subject, body, priority, date_sent, time_sent, is_read, is_sent, is_deleted) 
+                                                   VALUES 
+                                                   (@sender, @recipient, @subject, @body, @priority, @date_sent, @time_sent, @is_read, @is_sent, @is_deleted)";
                                     using (MySqlCommand insertCmd = new MySqlCommand(insertQuery, conn))
                                     {
                                         insertCmd.Parameters.AddWithValue("@sender", currentUserLogin);
                                         insertCmd.Parameters.AddWithValue("@recipient", selectedRecipient);
                                         insertCmd.Parameters.AddWithValue("@subject", subject);
-                                        insertCmd.Parameters.AddWithValue("@body", body);
+                                        insertCmd.Parameters.AddWithValue("@body", fwdBody);
                                         insertCmd.Parameters.AddWithValue("@priority", priority);
                                         insertCmd.Parameters.AddWithValue("@date_sent", DateTime.Now.ToString("dd.MM.yyyy"));
                                         insertCmd.Parameters.AddWithValue("@time_sent", DateTime.Now.ToString("HH:mm:ss"));
-                                        insertCmd.Parameters.AddWithValue("@is_read", false); // Новое сообщение — непрочитанное
-                                        insertCmd.Parameters.AddWithValue("@is_sent", true);  // Переслано — считается отправленным
+                                        insertCmd.Parameters.AddWithValue("@is_read", false);
+                                        insertCmd.Parameters.AddWithValue("@is_sent", true);
                                         insertCmd.Parameters.AddWithValue("@is_deleted", false);
 
                                         insertCmd.ExecuteNonQuery();
+
+                                        long newMessageId = insertCmd.LastInsertedId;
+
+                                        // Копируем документы, связанные с исходным сообщением id
+                                        string selectDocsQuery = "SELECT filename, filedata, filetype, is_signed, is_draft FROM documents WHERE message_id = @oldMessageId";
+                                        using (MySqlCommand selectDocsCmd = new MySqlCommand(selectDocsQuery, conn))
+                                        {
+                                            selectDocsCmd.Parameters.AddWithValue("@oldMessageId", id);
+
+                                            using (MySqlDataReader docsReader = selectDocsCmd.ExecuteReader())
+                                            {
+                                                List<(string filename, byte[] filedata, string filetype, bool is_signed, bool is_draft)> docsToInsert = new List<(string, byte[], string, bool, bool)>();
+
+                                                while (docsReader.Read())
+                                                {
+                                                    string filename = docsReader.GetString("filename");
+                                                    byte[] filedata = (byte[])docsReader["filedata"];
+                                                    string filetype = docsReader.GetString("filetype");
+                                                    bool is_signed = docsReader.GetBoolean("is_signed");
+                                                    bool is_draft = docsReader.GetBoolean("is_draft");
+
+                                                    docsToInsert.Add((filename, filedata, filetype, is_signed, is_draft));
+                                                }
+                                                docsReader.Close();
+
+                                                // Вставляем документы для нового сообщения
+                                                string insertDocQuery = @"INSERT INTO documents 
+                                            (message_id, filename, filedata, filetype, is_signed, is_draft, draft_id) 
+                                            VALUES (@messageId, @filename, @filedata, @filetype, @is_signed, @is_draft, NULL)";
+                                                using (MySqlCommand insertDocCmd = new MySqlCommand(insertDocQuery, conn))
+                                                {
+                                                    insertDocCmd.Parameters.Add("@messageId", MySqlDbType.Int32);
+                                                    insertDocCmd.Parameters.Add("@filename", MySqlDbType.VarChar);
+                                                    insertDocCmd.Parameters.Add("@filedata", MySqlDbType.Blob);
+                                                    insertDocCmd.Parameters.Add("@filetype", MySqlDbType.VarChar);
+                                                    insertDocCmd.Parameters.Add("@is_signed", MySqlDbType.Bit);
+                                                    insertDocCmd.Parameters.Add("@is_draft", MySqlDbType.Bit);
+                                                    insertDocCmd.Parameters.Add("@draft_id", MySqlDbType.Int32);
+
+                                                    foreach (var doc in docsToInsert)
+                                                    {
+                                                        insertDocCmd.Parameters["@messageId"].Value = newMessageId;
+                                                        insertDocCmd.Parameters["@filename"].Value = doc.filename;
+                                                        insertDocCmd.Parameters["@filedata"].Value = doc.filedata;
+                                                        insertDocCmd.Parameters["@filetype"].Value = doc.filetype;
+                                                        insertDocCmd.Parameters["@is_signed"].Value = doc.is_signed;
+                                                        insertDocCmd.Parameters["@is_draft"].Value = doc.is_draft;
+                                                        insertDocCmd.Parameters["@draft_id"].Value = DBNull.Value; // Всегда NULL при пересылке
+
+                                                        insertDocCmd.ExecuteNonQuery();
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
+                                }
+                                else
+                                {
+                                    reader.Close();
                                 }
                             }
                         }
                     }
-                    MessageBox.Show("Сообщения успешно пересланы!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    MessageBox.Show("Новые сообщения успешно пересланы!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                     // Обновление данных в зависимости от текущей вкладки
                     if (currentView == "read")
                     {
-                        LoadReadMessages(); // Метод для обновления прочитанных сообщений
+                        LoadReadMessages();
                     }
                     else
                     {
-                        LoadIncomingMessages(); // Метод для обновления входящих сообщений
+                        LoadIncomingMessages();
                     }
                 }
             }
@@ -1714,6 +1770,159 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
             {
                 MessageBox.Show("Ошибка при пересылке сообщений: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+
+            //dataGridView1.EndEdit();
+            //dataGridView1.CommitEdit(DataGridViewDataErrorContexts.Commit);
+
+            //List<int> selectedMessageIds = new List<int>();
+
+            //foreach (DataGridViewRow row in dataGridView1.Rows)
+            //{
+            //    if (row.Cells[0] is DataGridViewCheckBoxCell checkbox &&
+            //        checkbox.Value != null &&
+            //        Convert.ToBoolean(checkbox.Value))
+            //    {
+            //        if (row.Cells["message_id"].Value != null)
+            //            selectedMessageIds.Add(Convert.ToInt32(row.Cells["message_id"].Value));
+            //    }
+            //}
+
+            //if (selectedMessageIds.Count == 0)
+            //{
+            //    MessageBox.Show("Выберите хотя бы одно сообщение для пересылки", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            //    return;
+            //}
+
+            //// Получаем список пользователей
+            //List<string> users = new List<string>();
+            //using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            //{
+            //    try
+            //    {
+            //        conn.Open();
+            //        MySqlCommand cmd = new MySqlCommand("SELECT username FROM users", conn);
+            //        using (var reader = cmd.ExecuteReader())
+            //        {
+            //            while (reader.Read())
+            //                users.Add(reader.GetString("username"));
+            //        }
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        MessageBox.Show("Ошибка при получении списка пользователей: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            //        return;
+            //    }
+            //}
+
+            //// Мини-форма выбора получателя
+            //string selectedRecipient = ShowRecipientSelectDialog(users, currentUser);
+            //if (string.IsNullOrEmpty(selectedRecipient))
+            //{
+            //    MessageBox.Show("Получатель не выбран. Пересылка отменена", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            //    return;
+            //}
+
+            //string currentUserLogin = currentUser; // <- Замени на актуального пользователя
+            //if (selectedRecipient == currentUserLogin)
+            //{
+            //    MessageBox.Show("Нельзя пересылать сообщения самому себе", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            //    return;
+            //}
+
+            //try
+            //{
+            //    using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            //    {
+            //        conn.Open();
+
+            //        foreach (int id in selectedMessageIds)
+            //        {
+            //            string selectQuery = "SELECT sender, subject, body, priority, is_read, is_sent, is_deleted FROM messages WHERE id = @id";
+            //            using (MySqlCommand selectCmd = new MySqlCommand(selectQuery, conn))
+            //            {
+            //                selectCmd.Parameters.AddWithValue("@id", id);
+            //                using (MySqlDataReader reader = selectCmd.ExecuteReader())
+            //                {
+            //                    if (reader.Read())
+            //                    {
+            //                        string originalSender = reader.GetString("sender");
+            //                        string subject = reader.GetString("subject");
+            //                        string body = reader.GetString("body");
+            //                        string priority = reader.GetString("priority");
+            //                        bool is_read = reader.GetBoolean("is_read");
+            //                        bool is_sent = reader.GetBoolean("is_sent");
+            //                        bool is_deleted = reader.GetBoolean("is_deleted");
+
+            //                        // Формируем тело пересланного сообщения
+            //                        body = $"--- Пересланное сообщение ---\n\nОт: {originalSender}\nТема: {subject}\nТекст:\n{body}\n\n";
+
+            //                        reader.Close();
+
+            //                        // Проверка, не пересылалось ли уже такое сообщение этому же получателю
+            //                        string checkQuery = @"SELECT COUNT(*) FROM messages 
+            //                                  WHERE sender = @sender 
+            //                                  AND recipient = @recipient 
+            //                                  AND subject = @subject 
+            //                                  AND body = @body 
+            //                                  AND is_deleted = 0";
+            //                        using (MySqlCommand checkCmd = new MySqlCommand(checkQuery, conn))
+            //                        {
+            //                            checkCmd.Parameters.AddWithValue("@sender", currentUserLogin);
+            //                            checkCmd.Parameters.AddWithValue("@recipient", selectedRecipient);
+            //                            checkCmd.Parameters.AddWithValue("@subject", subject);
+            //                            checkCmd.Parameters.AddWithValue("@body", body);
+
+            //                            int count = Convert.ToInt32(checkCmd.ExecuteScalar());
+
+            //                            // Если сообщение уже существует в базе, пропускаем пересылку
+            //                            if (count > 0)
+            //                            {
+            //                                MessageBox.Show("Это сообщение уже было переслано данному пользователю", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            //                                return; // Пропускаем пересылку этого сообщения
+            //                            }
+            //                        }
+
+            //                        // Вставка пересланного сообщения с текущей датой/временем
+            //                        string insertQuery = @"INSERT INTO messages 
+            //                                    (sender, recipient, subject, body, priority, date_sent, time_sent, is_read, is_sent, is_deleted) 
+            //                                    VALUES 
+            //                                    (@sender, @recipient, @subject, @body, @priority, @date_sent, @time_sent, @is_read, @is_sent, @is_deleted)";
+            //                        using (MySqlCommand insertCmd = new MySqlCommand(insertQuery, conn))
+            //                        {
+            //                            insertCmd.Parameters.AddWithValue("@sender", currentUserLogin);
+            //                            insertCmd.Parameters.AddWithValue("@recipient", selectedRecipient);
+            //                            insertCmd.Parameters.AddWithValue("@subject", subject);
+            //                            insertCmd.Parameters.AddWithValue("@body", body);
+            //                            insertCmd.Parameters.AddWithValue("@priority", priority);
+            //                            insertCmd.Parameters.AddWithValue("@date_sent", DateTime.Now.ToString("dd.MM.yyyy"));
+            //                            insertCmd.Parameters.AddWithValue("@time_sent", DateTime.Now.ToString("HH:mm:ss"));
+            //                            insertCmd.Parameters.AddWithValue("@is_read", false); // Новое сообщение — непрочитанное
+            //                            insertCmd.Parameters.AddWithValue("@is_sent", true);  // Переслано — считается отправленным
+            //                            insertCmd.Parameters.AddWithValue("@is_deleted", false);
+
+            //                            insertCmd.ExecuteNonQuery();
+            //                        }
+            //                    }
+            //                }
+            //            }
+            //        }
+            //        MessageBox.Show("Сообщения успешно пересланы!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            //        // Обновление данных в зависимости от текущей вкладки
+            //        if (currentView == "read")
+            //        {
+            //            LoadReadMessages(); // Метод для обновления прочитанных сообщений
+            //        }
+            //        else
+            //        {
+            //            LoadIncomingMessages(); // Метод для обновления входящих сообщений
+            //        }
+            //    }
+            //}
+            //catch (Exception ex)
+            //{
+            //    MessageBox.Show("Ошибка при пересылке сообщений: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            //}
         }
 
 
@@ -1873,7 +2082,7 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
             if (selectedDepartments != null && selectedDepartments.Count > 0)
             {
                 Form8 form8 = new Form8(currentUser, selectedDepartments);
-                form8.ShowDialog();
+                form8.ShowDialog();            
             }
         }
 
@@ -2058,6 +2267,126 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
                     }
                 }
             }
+        }
+
+        private void восстановитьПрочитанноеToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            dataGridView1.EndEdit();
+            dataGridView1.CommitEdit(DataGridViewDataErrorContexts.Commit);
+
+            dataGridView1.MouseDown -= dataGridView1_MouseDown;
+            dataGridView1.MouseDown -= dataGridView1_MouseDown1;
+            dataGridView1.MouseDown += dataGridView1_MouseDown1;
+
+            // Проверим, есть ли выделенные сообщения (отмеченные чекбоксом)
+            List<int> selectedMessageIds = new List<int>();
+
+            foreach (DataGridViewRow row in dataGridView1.Rows)
+            {
+                bool isChecked = Convert.ToBoolean(row.Cells[0].Value);
+                if (isChecked)
+                {
+                    int messageId = Convert.ToInt32(row.Cells["message_id"].Value);
+                    selectedMessageIds.Add(messageId);
+                }
+            }
+
+            DialogResult result;
+
+            if (selectedMessageIds.Count > 0)
+            {
+                // Есть выделенные — предложить восстановить только их
+                result = MessageBox.Show(
+                    "Вы действительно хотите восстановить выделенные прочитанные сообщения?\n\n" +
+                    "Если нажмёте «Да», восстановятся только отмеченные сообщения",
+                    "Восстановление выделенных сообщений",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (result == DialogResult.Yes)
+                {
+                    try
+                    {
+                        using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                        {
+                            conn.Open();
+
+                            foreach (int id in selectedMessageIds)
+                            {
+                                string updateQuery = "UPDATE messages SET is_read = 0 WHERE id = @id";
+
+                                using (MySqlCommand cmd = new MySqlCommand(updateQuery, conn))
+                                {
+                                    cmd.Parameters.AddWithValue("@id", id);
+                                    cmd.ExecuteNonQuery();
+                                }
+                            }
+
+                            MessageBox.Show("Выделенные сообщения восстановлены!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            LoadReadMessages();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Ошибка при восстановлении сообщений: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+            else
+            {
+                // Ничего не выделено — предложить восстановить все
+                result = MessageBox.Show(
+                    "Вы действительно хотите восстановить все прочитанные сообщения?\n\n" +
+                    "Если нажмёте «Да», все сообщения будут восстановлены.\n" +
+                    "Если нажмёте «Нет», вы можете выбрать отдельные сообщения и восстановить их вручную",
+                    "Восстановление прочитанных сообщений",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (result == DialogResult.Yes)
+                {
+                    try
+                    {
+                        using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+                        {
+                            conn.Open();
+
+                            string updateQuery = @"
+                        UPDATE messages
+                        SET is_read = 0
+                        WHERE recipient = @username
+                            AND is_read = 1
+                            AND is_deleted = 0
+                            AND is_draft = 0
+                            AND is_sent = 1";
+
+                            using (MySqlCommand cmd = new MySqlCommand(updateQuery, conn))
+                            {
+                                cmd.Parameters.AddWithValue("@username", currentUser);
+                                int affected = cmd.ExecuteNonQuery();
+
+                                if (affected > 0)
+                                {
+                                    MessageBox.Show("Все прочитанные сообщения успешно восстановлены!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                    LoadReadMessages();
+                                }
+                                else
+                                {
+                                    MessageBox.Show("Нет сообщений для восстановления", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Ошибка при восстановлении сообщений: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+            //else
+            //{
+            //    MessageBox.Show("Вы можете отметить нужные сообщения вручную и восстановить их", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            //}
         }
 
         //private void MarkMessageAsRead(int messageId)

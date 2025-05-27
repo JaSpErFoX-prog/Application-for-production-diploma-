@@ -200,6 +200,7 @@
             this.восстановитьПрочитанноеToolStripMenuItem.Name = "восстановитьПрочитанноеToolStripMenuItem";
             this.восстановитьПрочитанноеToolStripMenuItem.Size = new System.Drawing.Size(284, 26);
             this.восстановитьПрочитанноеToolStripMenuItem.Text = "Восстановить прочитанное";
+            this.восстановитьПрочитанноеToolStripMenuItem.Click += new System.EventHandler(this.восстановитьПрочитанноеToolStripMenuItem_Click);
             // 
             // переслатьСообщенияToolStripMenuItem
             // 
