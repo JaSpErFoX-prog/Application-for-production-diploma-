@@ -36,6 +36,7 @@
             this.поВозрастаниюToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.поУбываниюToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.сброситьФильтрыToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.изменитьДанныеПользователейToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.button1 = new System.Windows.Forms.Button();
@@ -50,7 +51,8 @@
             this.menuStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.выйтиИзСистемыToolStripMenuItem,
-            this.фильтрыToolStripMenuItem});
+            this.фильтрыToolStripMenuItem,
+            this.изменитьДанныеПользователейToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.Size = new System.Drawing.Size(1074, 31);
@@ -111,6 +113,13 @@
             this.сброситьФильтрыToolStripMenuItem.Size = new System.Drawing.Size(223, 26);
             this.сброситьФильтрыToolStripMenuItem.Text = "Сбросить фильтры";
             this.сброситьФильтрыToolStripMenuItem.Click += new System.EventHandler(this.сброситьФильтрыToolStripMenuItem_Click);
+            // 
+            // изменитьДанныеПользователейToolStripMenuItem
+            // 
+            this.изменитьДанныеПользователейToolStripMenuItem.Name = "изменитьДанныеПользователейToolStripMenuItem";
+            this.изменитьДанныеПользователейToolStripMenuItem.Size = new System.Drawing.Size(258, 27);
+            this.изменитьДанныеПользователейToolStripMenuItem.Text = "Изменить данные пользователей";
+            this.изменитьДанныеПользователейToolStripMenuItem.Click += new System.EventHandler(this.изменитьДанныеПользователейToolStripMenuItem_Click);
             // 
             // dataGridView1
             // 
@@ -204,5 +213,6 @@
         private System.Windows.Forms.ToolStripMenuItem поВозрастаниюToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem поУбываниюToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem сброситьФильтрыToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem изменитьДанныеПользователейToolStripMenuItem;
     }
 }

@@ -207,12 +207,14 @@
             this.просмотретьДокументыToolStripMenuItem.Name = "просмотретьДокументыToolStripMenuItem";
             this.просмотретьДокументыToolStripMenuItem.Size = new System.Drawing.Size(410, 26);
             this.просмотретьДокументыToolStripMenuItem.Text = "Просмотреть документы";
+            this.просмотретьДокументыToolStripMenuItem.Click += new System.EventHandler(this.просмотретьДокументыToolStripMenuItem_Click_1);
             // 
             // скачатьВсеДокументыToolStripMenuItem
             // 
             this.скачатьВсеДокументыToolStripMenuItem.Name = "скачатьВсеДокументыToolStripMenuItem";
             this.скачатьВсеДокументыToolStripMenuItem.Size = new System.Drawing.Size(410, 26);
             this.скачатьВсеДокументыToolStripMenuItem.Text = "Скачать все документы";
+            this.скачатьВсеДокументыToolStripMenuItem.Click += new System.EventHandler(this.скачатьВсеДокументыToolStripMenuItem_Click_1);
             // 
             // сброситьИзмененияВДокументахToolStripMenuItem
             // 
@@ -238,6 +240,7 @@
             this.checkBox1.TabIndex = 18;
             this.checkBox1.Text = "Подписать";
             this.checkBox1.UseVisualStyleBackColor = true;
+            this.checkBox1.CheckedChanged += new System.EventHandler(this.checkBox1_CheckedChanged);
             // 
             // Form8
             // 

@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.SqlClient;
 using System.Drawing;
 using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using MySql.Data.MySqlClient;
 
@@ -505,6 +508,289 @@ namespace AtlantPrograma
                     }
                 }
             }
+        }
+
+        private void EditSelectedUsers()
+        {
+            // Завершаем редактирование, чтобы получить актуальные значения чекбоксов
+            if (dataGridView1.IsCurrentCellDirty)
+            {
+                dataGridView1.CommitEdit(DataGridViewDataErrorContexts.Commit);
+            }
+
+            List<int> selectedUserIds = new List<int>();
+
+            foreach (DataGridViewRow row in dataGridView1.Rows)
+            {
+                var cellValue = row.Cells["Select"].Value;
+                bool isSelected = cellValue != null && cellValue is bool && (bool)cellValue;
+
+                if (isSelected)
+                {
+                    int userId = Convert.ToInt32(row.Cells["id"].Value);
+                    selectedUserIds.Add(userId);
+                }
+            }
+
+            int selectedCount = selectedUserIds.Count;
+
+            if (selectedCount == 0)
+            {
+                MessageBox.Show("Не выбраны пользователи.", "Изменение данных", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            DialogResult confirm = MessageBox.Show(
+                $"Вы выбрали {selectedCount} пользователь(ей). Продолжить редактирование?",
+                "Подтверждение",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (confirm != DialogResult.Yes)
+                return;
+
+            int editedCount = 0;
+
+            foreach (int userId in selectedUserIds)
+            {
+                using (MySqlConnection conn = new MySqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"
+                SELECT u.username, u.password, ud.department_id, d.phones AS phone
+                FROM users u
+                LEFT JOIN user_details ud ON ud.user_id = u.id
+                LEFT JOIN departments d ON d.id = ud.department_id
+                WHERE u.id = @id";
+
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", userId);
+
+                        string username = "";
+                        string password = "";
+                        string departmentName = "";
+                        string phone = "";
+
+                        using (MySqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (!reader.Read())
+                                continue;
+
+                            username = reader["username"].ToString();
+                            password = ""; // не передаём хэш
+
+                            int departmentId = reader["department_id"] == DBNull.Value ? 0 : Convert.ToInt32(reader["department_id"]);
+                            departmentName = departmentId != 0 && departmentsDict.ContainsKey(departmentId)
+                                ? departmentsDict[departmentId]
+                                : "";
+
+                            phone = reader["phone"] == DBNull.Value ? "" : reader["phone"].ToString();
+                        }
+
+                        if (username == currentUser)
+                        {
+                            MessageBox.Show("Нельзя изменить данные текущего пользователя.", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            continue;
+                        }
+
+                        try
+                        {
+                            bool saved = ShowEditDialog(userId, username, password, departmentName, phone);
+                            if (!saved)
+                            {
+                                // Отмена - прерываем цикл и выход из метода
+                                break;
+                            }
+
+                            editedCount++;
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show($"Ошибка при редактировании пользователя с ID {userId}:\n{ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                }
+            }
+
+            if (editedCount == 0)
+            {
+                MessageBox.Show("Изменения не были внесены.", "Изменение данных", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show($"Данные успешно обновлены для {editedCount} пользователь(ей).", "Готово", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+
+            //LoadUsers(); // Обновление таблицы
+        }
+
+        private bool ShowEditDialog(int userId, string username, string passwordHash, string departmentName, string phone)
+        {
+            Form dialog = new Form()
+            {
+                Width = 500,
+                Height = 320,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                Text = $"Изменение: {username}",
+                StartPosition = FormStartPosition.CenterParent,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            Label lblUsername = new Label() { Text = "Имя пользователя:", Top = 20, Left = 10, Width = 140 };
+            TextBox txtUsername = new TextBox() { Top = 20, Left = 160, Width = 300, Text = username };
+
+            Label lblPassword = new Label() { Text = "Пароль (необязательно):", Top = 60, Left = 10, Width = 140 };
+            TextBox txtPassword = new TextBox() { Top = 60, Left = 160, Width = 260, UseSystemPasswordChar = true };
+
+            PictureBox pictureBox1 = new PictureBox()
+            {
+                Left = 430,
+                Top = 60,
+                Width = 24,
+                Height = 24,
+                Cursor = Cursors.Hand,
+                SizeMode = PictureBoxSizeMode.StretchImage,
+                ImageLocation = "D:\\diplom\\eye.ico" // замените на актуальный путь
+            };
+
+            bool passwordVisible = false;
+            pictureBox1.Click += (s, e) =>
+            {
+                passwordVisible = !passwordVisible;
+                txtPassword.UseSystemPasswordChar = !passwordVisible;
+            };
+
+            Label lblDepartment = new Label() { Text = "Отдел:", Top = 100, Left = 10, Width = 140 };
+            ComboBox cbDepartment = new ComboBox()
+            {
+                Top = 100,
+                Left = 160,
+                Width = 300,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+
+            foreach (var dep in departmentsDict)
+                cbDepartment.Items.Add(dep.Value);
+
+            cbDepartment.SelectedItem = departmentName;
+
+            Label lblPhone = new Label() { Text = "Телефон отдела:", Top = 140, Left = 10, Width = 140 };
+            TextBox txtPhone = new TextBox() { Top = 140, Left = 160, Width = 300, Text = phone ?? "" };
+
+            Button btnSave = new Button() { Text = "Сохранить", Left = 280, Width = 90, Top = 220, DialogResult = DialogResult.OK };
+            Button btnCancel = new Button() { Text = "Отмена", Left = 380, Width = 90, Top = 220, DialogResult = DialogResult.Cancel };
+
+            dialog.Controls.AddRange(new Control[] {
+        lblUsername, txtUsername,
+        lblPassword, txtPassword, pictureBox1,
+        lblDepartment, cbDepartment,
+        lblPhone, txtPhone,
+        btnSave, btnCancel
+    });
+
+            dialog.AcceptButton = btnSave;
+            dialog.CancelButton = btnCancel;
+
+            cbDepartment.SelectedIndexChanged += (s, e) =>
+            {
+                string selectedDep = cbDepartment.SelectedItem?.ToString();
+                txtPhone.Text = GetPhonesForDepartment(selectedDep) ?? "";
+            };
+
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                // Валидация телефона
+                if (!Regex.IsMatch(txtPhone.Text, @"^\d-\d{2}(, \d-\d{2})*$"))
+                {
+                    MessageBox.Show("Номер телефона должен быть в формате 4-20 или 4-20, 9-10", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return false;
+                }
+
+                string newUsername = txtUsername.Text;
+                string newPassword = txtPassword.Text;
+                string newDepartmentName = cbDepartment.SelectedItem?.ToString() ?? "";
+                string newPhone = txtPhone.Text;
+
+                // Если ничего не изменилось и пароль пустой — не сохраняем
+                if (newUsername == username &&
+                    string.IsNullOrEmpty(newPassword) &&
+                    newDepartmentName == departmentName &&
+                    newPhone == (phone ?? ""))
+                {
+                    return false;
+                }
+
+                int departmentId = departmentsDict.FirstOrDefault(x => x.Value == newDepartmentName).Key;
+                UpdateUser(userId, newUsername, newPassword, departmentId, newPhone);
+                return true;
+            }
+
+            return false;
+        }
+
+        private void UpdateUser(int userId, string username, string password, int departmentId, string phones)
+        {
+            using (MySqlConnection conn = new MySqlConnection(connectionString))
+            {
+                conn.Open();
+
+                // Обновить данные пользователя
+                MySqlCommand cmdUser;
+                if (!string.IsNullOrEmpty(password))
+                {
+                    string hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
+                    cmdUser = new MySqlCommand(
+                        "UPDATE users SET username = @username, password = @password WHERE id = @id", conn);
+                    cmdUser.Parameters.AddWithValue("@password", hashedPassword);
+                }
+                else
+                {
+                    cmdUser = new MySqlCommand(
+                        "UPDATE users SET username = @username WHERE id = @id", conn);
+                }
+
+                cmdUser.Parameters.AddWithValue("@username", username);
+                cmdUser.Parameters.AddWithValue("@id", userId);
+                cmdUser.ExecuteNonQuery();
+
+                // Обновить user_details
+                MySqlCommand cmdDetails = new MySqlCommand(
+                    "UPDATE user_details SET department_id = @depId WHERE user_id = @id", conn);
+                cmdDetails.Parameters.AddWithValue("@depId", departmentId);
+                cmdDetails.Parameters.AddWithValue("@id", userId);
+                cmdDetails.ExecuteNonQuery();
+
+                // Обновить телефоны
+                MySqlCommand cmdDeptPhone = new MySqlCommand(
+                    "UPDATE departments SET phones = @phones WHERE id = @id", conn);
+                cmdDeptPhone.Parameters.AddWithValue("@phones", phones);
+                cmdDeptPhone.Parameters.AddWithValue("@id", departmentId);
+                cmdDeptPhone.ExecuteNonQuery();
+            }
+        }
+
+
+        private string GetPhonesForDepartment(string departmentName)
+        {
+            int depId = departmentsDict.FirstOrDefault(x => x.Value == departmentName).Key;
+
+            using (MySqlConnection conn = new MySqlConnection(connectionString))
+            {
+                conn.Open();
+                MySqlCommand cmd = new MySqlCommand("SELECT phones FROM departments WHERE id = @id", conn);
+                cmd.Parameters.AddWithValue("@id", depId);
+                return cmd.ExecuteScalar()?.ToString();
+            }
+        }
+
+        private void изменитьДанныеПользователейToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            dataGridView1.EndEdit();
+            dataGridView1.CommitEdit(DataGridViewDataErrorContexts.Commit);
+            EditSelectedUsers();
         }
     }
 }

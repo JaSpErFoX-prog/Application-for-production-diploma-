@@ -834,6 +834,7 @@ namespace AtlantPrograma
                                     docCmd.ExecuteNonQuery();
                                 }
                             }
+                            Task.Run(() => CleanOldTempDocuments());
                         }
 
                         // Теперь вставляем все файлы с актуальными данными в базу
@@ -852,7 +853,7 @@ namespace AtlantPrograma
                         //        docCmd.ExecuteNonQuery();
                         //    }
                         //}
-                        Task.Run(() => CleanOldTempDocuments());
+                        //Task.Run(() => CleanOldTempDocuments());
                     }
 
                         //Task.Run(() => CleanOldTempDocuments());
@@ -974,7 +975,21 @@ namespace AtlantPrograma
                         // Обновляем существующие документы или вставляем новые
                         foreach (var file in updatedFiles)
                         {
+                            bool documentExists = false;
+
                             if (file.id != 0)
+                            {
+                                string checkQuery = "SELECT COUNT(*) FROM documents WHERE id = @id AND draft_id = @draftId";
+                                using (MySqlCommand checkCmd = new MySqlCommand(checkQuery, conn))
+                                {
+                                    checkCmd.Parameters.AddWithValue("@id", file.id);
+                                    checkCmd.Parameters.AddWithValue("@draftId", openedDraftId.Value);
+                                    var count = Convert.ToInt32(checkCmd.ExecuteScalar());
+                                    documentExists = count > 0;
+                                }
+                            }
+
+                            if (documentExists)
                             {
                                 // Обновление существующего документа из черновика
                                 string updateDocQuery = @"
@@ -1013,8 +1028,50 @@ VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0, NULL)";
                             }
                         }
 
+                        // Обновляем существующие документы или вставляем новые
+                        //                        foreach (var file in updatedFiles)
+                        //                        {
+                        //                            if (file.id != 0)
+                        //                            {
+                        //                                // Обновление существующего документа из черновика
+                        //                                string updateDocQuery = @"
+                        //UPDATE documents 
+                        //SET message_id = @msgId, draft_id = NULL, is_draft = 0, 
+                        //    filename = @filename, filedata = @filedata, filetype = @filetype, is_signed = @isSigned
+                        //WHERE id = @docId";
+
+                        //                                using (MySqlCommand updateCmd = new MySqlCommand(updateDocQuery, conn))
+                        //                                {
+                        //                                    updateCmd.Parameters.AddWithValue("@msgId", CurrentsmessageId);
+                        //                                    updateCmd.Parameters.AddWithValue("@filename", file.fileName);
+                        //                                    updateCmd.Parameters.AddWithValue("@filedata", file.fileData);
+                        //                                    updateCmd.Parameters.AddWithValue("@filetype", file.fileType);
+                        //                                    updateCmd.Parameters.AddWithValue("@isSigned", checkBox1.Checked);
+                        //                                    updateCmd.Parameters.AddWithValue("@docId", file.id);
+                        //                                    updateCmd.ExecuteNonQuery();
+                        //                                }
+                        //                            }
+                        //                            else
+                        //                            {
+                        //                                // Вставка нового документа
+                        //                                string insertDocQuery = @"
+                        //INSERT INTO documents (message_id, filename, filedata, filetype, is_signed, is_draft, draft_id)
+                        //VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0, NULL)";
+
+                        //                                using (MySqlCommand docCmd = new MySqlCommand(insertDocQuery, conn))
+                        //                                {
+                        //                                    docCmd.Parameters.AddWithValue("@messageId", CurrentsmessageId);
+                        //                                    docCmd.Parameters.AddWithValue("@filename", file.fileName);
+                        //                                    docCmd.Parameters.AddWithValue("@filedata", file.fileData);
+                        //                                    docCmd.Parameters.AddWithValue("@filetype", file.fileType);
+                        //                                    docCmd.Parameters.AddWithValue("@isSigned", checkBox1.Checked);
+                        //                                    docCmd.ExecuteNonQuery();
+                        //                                }
+                        //                            }
+                        //                        }
+
                         // ❌ УДАЛЕНИЕ ДОКУМЕНТОВ УБРАНО ❌
-                        //Task.Run(() => CleanOldTempDocuments());
+                        Task.Run(() => CleanOldTempDocuments());
                         // Обновляем отображение черновиков
                         Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
                         form6?.LoadDraftMessages();
