@@ -33,10 +33,14 @@ namespace AtlantPrograma
             LoadRecipients();
             comboBox2.Items.AddRange(new string[] { "Не срочно", "Обычное сообщение", "Срочно!" });
             comboBox2.SelectedIndex = 1; // по умолчанию "Обычное сообщение"
+            toolTip1.SetToolTip(pictureBox1, "Прикрепить документы");
+            toolTip1.SetToolTip(pictureBox2, "Скачать все документы");
+            pictureBox2.Visible = true;
+
             //comboBox1.Enter += comboBox1_Enter;
             //comboBox1.Leave += comboBox1_Leave;
             //comboBox1.TextChanged += comboBox1_TextChanged;
-           // this.FormClosing += FormMessages_FormClosing;
+            // this.FormClosing += FormMessages_FormClosing;
 
         }
         //private void FormMessages_FormClosing(object sender, FormClosingEventArgs e)
@@ -835,8 +839,11 @@ namespace AtlantPrograma
                                 }
                             }
                             Task.Run(() => CleanOldTempDocuments());
+                            
                         }
 
+                        Form6 form6UpdateCount = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+                        form6UpdateCount?.UpdateMessageCounters();
                         // Теперь вставляем все файлы с актуальными данными в базу
                         //foreach (var file in updatedFiles)
                         //{
@@ -903,8 +910,10 @@ namespace AtlantPrograma
                                 updateCmd.ExecuteNonQuery();
                             }
                         }
+
                         bool isFromDraft = false;
 
+                        
                         if (openedDraftId.HasValue)
                         {
                         isFromDraft = true;
@@ -1075,7 +1084,7 @@ VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0, NULL)";
                         // Обновляем отображение черновиков
                         Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
                         form6?.LoadDraftMessages();
-
+                        form6?.UpdateMessageCounters();
                         //isFromDraft = true;
                         //string updateDraftQuery = "UPDATE drafts SET is_sent = 1 WHERE id = @id";
                         //using (MySqlCommand updateCmd = new MySqlCommand(updateDraftQuery, conn))
@@ -1098,6 +1107,7 @@ VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0, NULL)";
                         else if (isFromRead)
                         {
                             form6Notif?.LoadReadMessages(); // если из Прочитанных
+                        form6Notif?.UpdateMessageCounters();
                         }
                         else if (!replyingToMessageId.HasValue)
                         {
@@ -1107,6 +1117,7 @@ VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0, NULL)";
                         {
                             form6Notif?.ShowNotificationCount();
                             form6Notif?.LoadIncomingMessages(); // если из Входящих
+                            form6Notif?.UpdateMessageCounters();
                         }
 
                         this.Close();
@@ -1122,6 +1133,7 @@ VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0, NULL)";
         {
             textBox1.Text = subject;
             richTextBox1.Text = body;
+
 
             textBox1.ReadOnly = true;
             richTextBox1.ReadOnly = true;
@@ -1269,6 +1281,7 @@ VALUES (@messageId, @filename, @filedata, @filetype, @isSigned, 0, NULL)";
             просмотретьДокументыToolStripMenuItem.Enabled = false;
             сброситьИзмененияВДокументахToolStripMenuItem.Enabled = true;
             очиститьСписокПрикреплённыхСообщенийToolStripMenuItem.Enabled = true;
+            pictureBox2.Visible = true;
 
             this.openedDraftId = draftId;
 
@@ -1403,7 +1416,8 @@ WHERE draft_id = @draftId AND is_draft = 1";
             {
                 MessageBox.Show("Ошибка при загрузке черновика: " + ex.Message);
             }
-
+            Form6 form6UpdateCounte = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+            form6UpdateCounte?.UpdateMessageCounters();
             //            // Курсор ставим в самое начало
             //            //richTextBox1.SelectionStart = 0;
             //            //richTextBox1.ScrollToCaret();
@@ -1886,173 +1900,6 @@ WHERE draft_id = @draftId AND is_draft = 1";
                         "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
-
-            //if (attachedFiles.Count == 0)
-            //{
-            //    MessageBox.Show("Нет доступных документов для предварительного просмотра", "Информация",
-            //        MessageBoxButtons.OK, MessageBoxIcon.Information);
-            //    return;
-            //}
-
-            //if (originalAttachedFiles.Count == 0)
-            //{
-            //    // Создаём копию текущего списка
-            //    originalAttachedFiles = attachedFiles
-            //        .Select(file => (file.id, file.fileName, (byte[])file.fileData.Clone(), file.fileType, file.fileHash))
-            //        .ToList();
-            //}
-
-            //List<int> selectedIds = ShowDocumentSelectionDialogWithIds(attachedFiles);
-            //if (selectedIds == null || selectedIds.Count == 0)
-            //    return;
-
-            //string connectionString = "server=localhost;user=root;password=1111;database=document_system;";
-            //HashSet<int> existingDocumentIds = new HashSet<int>();
-
-            //if (CurrentsmessageId != 0)
-            //{
-            //    using (var conn = new MySqlConnection(connectionString))
-            //    {
-            //        conn.Open();
-            //        string query = "SELECT id FROM documents WHERE message_id = @msgId";
-            //        using (var cmd = new MySqlCommand(query, conn))
-            //        {
-            //            cmd.Parameters.AddWithValue("@msgId", CurrentsmessageId);
-            //            using (var reader = cmd.ExecuteReader())
-            //            {
-            //                while (reader.Read())
-            //                    existingDocumentIds.Add(reader.GetInt32("id"));
-            //            }
-            //        }
-            //    }
-            //}
-
-            //foreach (int id in selectedIds)
-            //{
-            //    var file = attachedFiles.FirstOrDefault(f => f.id == id);
-            //    if (file.fileData == null)
-            //    {
-            //        MessageBox.Show($"Файл с ID {id} не найден", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            //        continue;
-            //    }
-
-            //    int realId = file.id;
-            //    bool fileExistsInDb = existingDocumentIds.Contains(realId);
-
-            //    try
-            //    {
-            //        if (fileExistsInDb)
-            //        {
-            //            using (var conn = new MySqlConnection(connectionString))
-            //            {
-            //                conn.Open();
-            //                string selectQuery = "SELECT filedata FROM documents WHERE id = @id";
-            //                using (var cmd = new MySqlCommand(selectQuery, conn))
-            //                {
-            //                    cmd.Parameters.AddWithValue("@id", realId);
-            //                    using (var reader = cmd.ExecuteReader())
-            //                    {
-            //                        if (reader.Read())
-            //                            file.fileData = (byte[])reader["filedata"];
-            //                    }
-            //                }
-            //            }
-            //        }
-
-            //        string uniqueKey = $"{file.fileHash}_{file.fileName}";
-            //        string tempDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TempDocuments");
-            //        Directory.CreateDirectory(tempDir);
-            //        string tempPath = Path.Combine(tempDir, uniqueKey);
-
-            //        if (!File.Exists(tempPath))
-            //        {
-            //            File.WriteAllBytes(tempPath, file.fileData);
-            //            tempDocumentPaths[uniqueKey] = tempPath;
-            //        }
-
-            //        DateTime originalWriteTime = File.GetLastWriteTime(tempPath);
-
-            //        // Запускаем документ
-            //        Process.Start(new ProcessStartInfo
-            //        {
-            //            FileName = tempPath,
-            //            UseShellExecute = true
-            //        });
-
-            //        // ⏱ Добавляем небольшую задержку перед началом отслеживания
-            //        Task.Run(async () =>
-            //        {
-            //            documentEditCounter++;
-
-            //            await Task.Delay(3000); // Подождать, чтобы Word успел открыть файл
-
-            //            // Ждём, пока файл перестанет использоваться
-            //            while (true)
-            //            {
-            //                try
-            //                {
-            //                    using (FileStream stream = File.Open(tempPath, FileMode.Open, FileAccess.Read, FileShare.None)) { }
-            //                    break;
-            //                }
-            //                catch
-            //                {
-            //                    await Task.Delay(1000);
-            //                }
-            //            }
-
-            //            try
-            //            {
-            //                if (File.Exists(tempPath))
-            //                {
-            //                    DateTime newWriteTime = File.GetLastWriteTime(tempPath);
-
-            //                    if (newWriteTime > originalWriteTime)
-            //                    {
-            //                        byte[] updatedData = File.ReadAllBytes(tempPath);
-            //                        file.fileData = updatedData;
-
-            //                        if (fileExistsInDb)
-            //                        {
-            //                            using (var conn = new MySqlConnection(connectionString))
-            //                            {
-            //                                conn.Open();
-            //                                string updateQuery = "UPDATE documents SET filedata = @filedata WHERE id = @id";
-            //                                using (var cmd = new MySqlCommand(updateQuery, conn))
-            //                                {
-            //                                    cmd.Parameters.AddWithValue("@filedata", updatedData);
-            //                                    cmd.Parameters.AddWithValue("@id", realId);
-            //                                    cmd.ExecuteNonQuery();
-            //                                }
-            //                            }
-
-            //                            Invoke(new Action(UpdateComboBox3));
-            //                        }
-            //                    }
-
-            //                    // Удаляем файл, когда он уже точно не используется
-            //                    if (fileExistsInDb)
-            //                    {
-            //                        File.Delete(tempPath);
-            //                        tempDocumentPaths.Remove(uniqueKey);
-            //                    }
-            //                }
-            //            }
-            //            catch (Exception ex)
-            //            {
-            //                Invoke(new Action(() =>
-            //                {
-            //                    MessageBox.Show($"Ошибка при обработке документа: {ex.Message}",
-            //                        "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            //                }));
-            //            }
-            //        });
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        MessageBox.Show($"Ошибка при открытии \"{file.fileName}\": {ex.Message}",
-            //            "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            //    }
-            //}
         }
 
         private void CleanOldTempDocuments()
@@ -2153,7 +2000,6 @@ WHERE draft_id = @draftId AND is_draft = 1";
                 CheckOnClick = true
             };
 
-            // Получаем отображаемые имена и соответствующие ID
             var displayList = GetDisplayNamesWithSizes(files);
             Dictionary<string, int> nameToIdMap = new Dictionary<string, int>();
 
@@ -2163,7 +2009,7 @@ WHERE draft_id = @draftId AND is_draft = 1";
                 nameToIdMap[displayName] = id;
             }
 
-            Button ok = new Button() { Text = "Открыть", Left = 210, Width = 75, Top = 230, DialogResult = DialogResult.OK };
+            Button ok = new Button() { Text = "Открыть", Left = 210, Width = 75, Top = 230 };
             Button cancel = new Button() { Text = "Отмена", Left = 295, Width = 75, Top = 230, DialogResult = DialogResult.Cancel };
 
             prompt.Controls.Add(label);
@@ -2173,25 +2019,49 @@ WHERE draft_id = @draftId AND is_draft = 1";
             prompt.AcceptButton = ok;
             prompt.CancelButton = cancel;
 
-            if (prompt.ShowDialog() == DialogResult.OK)
+            List<int> selectedIds = null;
+
+            ok.Click += (sender, e) =>
             {
-                List<int> selectedIds = new List<int>();
-
-                foreach (var item in listBox.CheckedItems)
+                if (listBox.CheckedItems.Count == 0)
                 {
-                    string displayName = item.ToString();
-
-                    if (nameToIdMap.TryGetValue(displayName, out int id))
-                    {
-                        selectedIds.Add(id);
-                    }
+                    MessageBox.Show("Пожалуйста, выберите хотя бы один документ!", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
                 }
 
+                DialogResult confirmResult = MessageBox.Show(
+                    $"Вы выбрали {listBox.CheckedItems.Count} документ(а)(ов).\nПродолжить?",
+                    "Подтверждение",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question
+                );
+
+                if (confirmResult == DialogResult.Yes)
+                {
+                    selectedIds = new List<int>();
+
+                    foreach (var item in listBox.CheckedItems)
+                    {
+                        string displayName = item.ToString();
+
+                        if (nameToIdMap.TryGetValue(displayName, out int id))
+                        {
+                            selectedIds.Add(id);
+                        }
+                    }
+
+                    prompt.DialogResult = DialogResult.OK;
+                    prompt.Close();
+                }
+                // Если "Нет" — остаёмся на форме и не закрываем её
+            };
+
+            if (prompt.ShowDialog() == DialogResult.OK)
+            {
                 return selectedIds;
             }
 
             return null;
-
             //Form prompt = new Form()
             //{
             //    Width = 400,
@@ -2214,9 +2084,15 @@ WHERE draft_id = @draftId AND is_draft = 1";
             //    CheckOnClick = true
             //};
 
-            //foreach (var file in files)
-            //    listBox.Items.Add($"{file.fileName} (ID: {file.id})");
+            //// Получаем отображаемые имена и соответствующие ID
+            //var displayList = GetDisplayNamesWithSizes(files);
+            //Dictionary<string, int> nameToIdMap = new Dictionary<string, int>();
 
+            //foreach (var (displayName, id) in displayList)
+            //{
+            //    listBox.Items.Add(displayName);
+            //    nameToIdMap[displayName] = id;
+            //}
 
             //Button ok = new Button() { Text = "Открыть", Left = 210, Width = 75, Top = 230, DialogResult = DialogResult.OK };
             //Button cancel = new Button() { Text = "Отмена", Left = 295, Width = 75, Top = 230, DialogResult = DialogResult.Cancel };
@@ -2234,10 +2110,9 @@ WHERE draft_id = @draftId AND is_draft = 1";
 
             //    foreach (var item in listBox.CheckedItems)
             //    {
-            //        string selectedText = item.ToString();
-            //        int startIndex = selectedText.LastIndexOf("ID: ") + 4;
-            //        int endIndex = selectedText.LastIndexOf(")");
-            //        if (int.TryParse(selectedText.Substring(startIndex, endIndex - startIndex), out int id))
+            //        string displayName = item.ToString();
+
+            //        if (nameToIdMap.TryGetValue(displayName, out int id))
             //        {
             //            selectedIds.Add(id);
             //        }
@@ -2339,13 +2214,11 @@ WHERE draft_id = @draftId AND is_draft = 1";
                 Left = 10,
                 Top = 10,
                 Width = 360,
-                Height = 240
+                Height = 240,
+                CheckOnClick = true
             };
 
-            // Получаем список отображаемых имён с размером (если дублируются по имени)
             var displayNamesWithIds = GetDisplayNamesWithSizes(files);
-
-            // Сопоставим отображаемое имя с ID для последующего поиска
             Dictionary<string, int> nameToIdMap = new Dictionary<string, int>();
 
             foreach (var (displayName, id) in displayNamesWithIds)
@@ -2359,8 +2232,8 @@ WHERE draft_id = @draftId AND is_draft = 1";
                 Text = "Открыть",
                 Left = 200,
                 Width = 80,
-                Top = 265,
-                DialogResult = DialogResult.OK
+                Top = 265
+                // DialogResult НЕ устанавливаем — теперь контролируем вручную
             };
 
             Button cancelButton = new Button()
@@ -2378,6 +2251,28 @@ WHERE draft_id = @draftId AND is_draft = 1";
             dialog.AcceptButton = openButton;
             dialog.CancelButton = cancelButton;
 
+            openButton.Click += (sender, e) =>
+            {
+                if (listBox.CheckedItems.Count == 0)
+                {
+                    MessageBox.Show("Пожалуйста, выберите хотя бы один документ!", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                DialogResult confirm = MessageBox.Show(
+                    $"Вы выбрали {listBox.CheckedItems.Count} документ(а)(ов).\nПродолжить?",
+                    "Подтверждение",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (confirm == DialogResult.Yes)
+                {
+                    dialog.DialogResult = DialogResult.OK;
+                    dialog.Close();
+                }
+                // Если пользователь нажал "Нет" — остаёмся на форме
+            };
+
             if (dialog.ShowDialog() == DialogResult.OK)
             {
                 foreach (var item in listBox.CheckedItems)
@@ -2386,12 +2281,10 @@ WHERE draft_id = @draftId AND is_draft = 1";
 
                     if (nameToIdMap.TryGetValue(selectedDisplayName, out int id))
                     {
-                        // Ищем файл по ID
                         var selectedFile = files.FirstOrDefault(f => f.id == id);
 
                         if (selectedFile.fileData != null)
                         {
-                            // Создаём уникальное имя файла, используя Guid
                             string uniqueName = $"{Guid.NewGuid()}_{selectedFile.fileName}";
                             string tempPath = Path.Combine(Path.GetTempPath(), uniqueName);
 
@@ -2401,6 +2294,7 @@ WHERE draft_id = @draftId AND is_draft = 1";
                     }
                 }
             }
+
             //Form dialog = new Form()
             //{
             //    Width = 400,
@@ -2420,8 +2314,17 @@ WHERE draft_id = @draftId AND is_draft = 1";
             //    Height = 240
             //};
 
-            //foreach (var file in files)
-            //    listBox.Items.Add($"{file.fileName} (ID: {file.id})");
+            //// Получаем список отображаемых имён с размером (если дублируются по имени)
+            //var displayNamesWithIds = GetDisplayNamesWithSizes(files);
+
+            //// Сопоставим отображаемое имя с ID для последующего поиска
+            //Dictionary<string, int> nameToIdMap = new Dictionary<string, int>();
+
+            //foreach (var (displayName, id) in displayNamesWithIds)
+            //{
+            //    listBox.Items.Add(displayName);
+            //    nameToIdMap[displayName] = id;
+            //}
 
             //Button openButton = new Button()
             //{
@@ -2451,29 +2354,24 @@ WHERE draft_id = @draftId AND is_draft = 1";
             //{
             //    foreach (var item in listBox.CheckedItems)
             //    {
-            //        string selectedFileName = item.ToString();
+            //        string selectedDisplayName = item.ToString();
 
-            //        // Извлекаем ID из строки
-            //        int startIndex = selectedFileName.LastIndexOf("ID: ") + 4;
-            //        int endIndex = selectedFileName.LastIndexOf(")");
-            //        int id = int.Parse(selectedFileName.Substring(startIndex, endIndex - startIndex));
-
-            //        // Ищем файл по ID, а не по имени
-            //        var selectedFile = files.FirstOrDefault(f => f.id == id);
-
-            //        if (selectedFile.fileData != null)
+            //        if (nameToIdMap.TryGetValue(selectedDisplayName, out int id))
             //        {
-            //            // Создаём уникальное имя файла, используя Guid
-            //            string uniqueName = $"{Guid.NewGuid()}_{selectedFile.fileName}";
-            //            string tempPath = Path.Combine(Path.GetTempPath(), uniqueName);
+            //            // Ищем файл по ID
+            //            var selectedFile = files.FirstOrDefault(f => f.id == id);
 
-            //            File.WriteAllBytes(tempPath, selectedFile.fileData);
-            //            Process.Start(new ProcessStartInfo(tempPath) { UseShellExecute = true });                   
-            //        //string tempPath = Path.Combine(Path.GetTempPath(), selectedFile.fileName);
-            //        //File.WriteAllBytes(tempPath, selectedFile.fileData);
-            //        //Process.Start(new ProcessStartInfo(tempPath) { UseShellExecute = true });
+            //            if (selectedFile.fileData != null)
+            //            {
+            //                // Создаём уникальное имя файла, используя Guid
+            //                string uniqueName = $"{Guid.NewGuid()}_{selectedFile.fileName}";
+            //                string tempPath = Path.Combine(Path.GetTempPath(), uniqueName);
+
+            //                File.WriteAllBytes(tempPath, selectedFile.fileData);
+            //                Process.Start(new ProcessStartInfo(tempPath) { UseShellExecute = true });
+            //            }
+            //        }
             //    }
-            //}
             //}
         }
         private void скачатьВсеДокументыToolStripMenuItem_Click(object sender, EventArgs e)
@@ -2852,7 +2750,8 @@ WHERE draft_id = @draftId AND is_draft = 1";
                 Left = 10,
                 Top = 10,
                 Width = 360,
-                Height = 240
+                Height = 240,
+                CheckOnClick = true
             };
 
             var displayNamesWithIds = GetDisplayNamesWithSizes(files);
@@ -2869,8 +2768,8 @@ WHERE draft_id = @draftId AND is_draft = 1";
                 Text = "Удалить",
                 Left = 200,
                 Width = 80,
-                Top = 265,
-                DialogResult = DialogResult.OK
+                Top = 265
+                // DialogResult НЕ устанавливаем, контролируем вручную
             };
 
             Button cancelButton = new Button()
@@ -2887,6 +2786,27 @@ WHERE draft_id = @draftId AND is_draft = 1";
             dialog.Controls.Add(cancelButton);
             dialog.AcceptButton = deleteButton;
             dialog.CancelButton = cancelButton;
+
+            deleteButton.Click += (sender, e) =>
+            {
+                if (listBox.CheckedItems.Count == 0)
+                {
+                    MessageBox.Show("Пожалуйста, выберите хотя бы один документ!", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                DialogResult confirm = MessageBox.Show(
+                    $"Вы действительно хотите удалить {listBox.CheckedItems.Count} документ(а)(ов)? Продолжить?",
+                    "Подтверждение",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (confirm == DialogResult.Yes)
+                {
+                    dialog.DialogResult = DialogResult.OK;
+                    dialog.Close();
+                }
+            };
 
             if (dialog.ShowDialog() == DialogResult.OK)
             {
@@ -2913,14 +2833,12 @@ WHERE draft_id = @draftId AND is_draft = 1";
 
                                         if (openedDraftId.HasValue)
                                         {
-                                            // Если это черновик — удаляем по id и is_draft = 1
                                             query = "DELETE FROM documents WHERE id = @id AND is_draft = 1";
                                             cmd = new MySqlCommand(query, conn);
                                             cmd.Parameters.AddWithValue("@id", selectedFile.id);
                                         }
                                         else
                                         {
-                                            // Иначе — обычное удаление по id
                                             query = "DELETE FROM documents WHERE id = @id";
                                             cmd = new MySqlCommand(query, conn);
                                             cmd.Parameters.AddWithValue("@id", selectedFile.id);
@@ -2930,7 +2848,6 @@ WHERE draft_id = @draftId AND is_draft = 1";
                                     }
                                 }
 
-                                // Удаляем локально из списка и UI
                                 attachedFiles.Remove(selectedFile);
                                 comboBox3.Items.Remove(selectedFile.fileName);
                             }
@@ -2942,7 +2859,7 @@ WHERE draft_id = @draftId AND is_draft = 1";
                     }
                 }
 
-                MessageBox.Show("Выбранные документы были удалены!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Выбранные документы были удалены", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 if (comboBox3.Items.Count == 0)
                     comboBox3.Text = "Пусто";
@@ -2967,10 +2884,7 @@ WHERE draft_id = @draftId AND is_draft = 1";
             //    Height = 240
             //};
 
-            //// Получаем отображаемые имена с размерами (если дублируются)
             //var displayNamesWithIds = GetDisplayNamesWithSizes(files);
-
-            //// Сопоставим отображаемое имя с ID для последующего удаления
             //Dictionary<string, int> displayNameToId = new Dictionary<string, int>();
 
             //foreach (var (displayName, id) in displayNamesWithIds)
@@ -3019,18 +2933,29 @@ WHERE draft_id = @draftId AND is_draft = 1";
             //                {
             //                    if (selectedFile.id != -1)
             //                    {
-            //                        // Удаляем из базы по id
             //                        using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
             //                        {
             //                            conn.Open();
 
-            //                            string query = "DELETE FROM documents WHERE id = @id";
+            //                            string query;
+            //                            MySqlCommand cmd;
 
-            //                            using (MySqlCommand cmd = new MySqlCommand(query, conn))
+            //                            if (openedDraftId.HasValue)
             //                            {
+            //                                // Если это черновик — удаляем по id и is_draft = 1
+            //                                query = "DELETE FROM documents WHERE id = @id AND is_draft = 1";
+            //                                cmd = new MySqlCommand(query, conn);
             //                                cmd.Parameters.AddWithValue("@id", selectedFile.id);
-            //                                cmd.ExecuteNonQuery();
             //                            }
+            //                            else
+            //                            {
+            //                                // Иначе — обычное удаление по id
+            //                                query = "DELETE FROM documents WHERE id = @id";
+            //                                cmd = new MySqlCommand(query, conn);
+            //                                cmd.Parameters.AddWithValue("@id", selectedFile.id);
+            //                            }
+
+            //                            cmd.ExecuteNonQuery();
             //                        }
             //                    }
 
@@ -3047,19 +2972,20 @@ WHERE draft_id = @draftId AND is_draft = 1";
             //    }
 
             //    MessageBox.Show("Выбранные документы были удалены!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            //    if (comboBox3.Items.Count == 0)
+            //        comboBox3.Text = "Пусто";
             //}
         }
 
         private List<int> ShowSealTargetSelectionDialog()
         {
-            // Если нет прикреплённых файлов — выход
             if (attachedFiles.Count == 0)
             {
                 MessageBox.Show("Нет документов для подписания", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return null;
             }
 
-            // Создаём диалоговое окно
             Form dialog = new Form()
             {
                 Width = 400,
@@ -3076,10 +3002,10 @@ WHERE draft_id = @draftId AND is_draft = 1";
                 Left = 10,
                 Top = 10,
                 Width = 360,
-                Height = 240
+                Height = 240,
+                CheckOnClick = true
             };
 
-            // Сопоставим displayName с ID
             Dictionary<string, int> displayNameToId = new Dictionary<string, int>();
 
             foreach (var file in attachedFiles)
@@ -3087,7 +3013,7 @@ WHERE draft_id = @draftId AND is_draft = 1";
                 string displayName = file.fileName;
 
                 if (displayNameToId.ContainsKey(displayName))
-                    displayName += $" ({file.id})"; // если имена совпадают, добавим id
+                    displayName += $" ({file.id})";
 
                 displayNameToId[displayName] = file.id;
                 listBox.Items.Add(displayName);
@@ -3098,8 +3024,8 @@ WHERE draft_id = @draftId AND is_draft = 1";
                 Text = "Подписать",
                 Left = 200,
                 Width = 80,
-                Top = 265,
-                DialogResult = DialogResult.OK
+                Top = 265
+                // DialogResult НЕ устанавливаем — контролируем вручную
             };
 
             Button cancelButton = new Button()
@@ -3116,6 +3042,27 @@ WHERE draft_id = @draftId AND is_draft = 1";
             dialog.Controls.Add(cancelButton);
             dialog.AcceptButton = okButton;
             dialog.CancelButton = cancelButton;
+
+            okButton.Click += (sender, e) =>
+            {
+                if (listBox.CheckedItems.Count == 0)
+                {
+                    MessageBox.Show("Пожалуйста, выберите хотя бы один документ!", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                DialogResult confirm = MessageBox.Show(
+                    $"Вы действительно хотите подписать {listBox.CheckedItems.Count} документ(а)(ов)? Продолжить?",
+                    "Подтверждение",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (confirm == DialogResult.Yes)
+                {
+                    dialog.DialogResult = DialogResult.OK;
+                    dialog.Close();
+                }
+            };
 
             if (dialog.ShowDialog() == DialogResult.OK)
             {
@@ -3134,6 +3081,89 @@ WHERE draft_id = @draftId AND is_draft = 1";
             }
 
             return null;
+
+            //// Если нет прикреплённых файлов — выход
+            //if (attachedFiles.Count == 0)
+            //{
+            //    MessageBox.Show("Нет документов для подписания", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            //    return null;
+            //}
+
+            //// Создаём диалоговое окно
+            //Form dialog = new Form()
+            //{
+            //    Width = 400,
+            //    Height = 350,
+            //    FormBorderStyle = FormBorderStyle.FixedDialog,
+            //    Text = "Выбор документов для подписи",
+            //    StartPosition = FormStartPosition.CenterParent,
+            //    MaximizeBox = false,
+            //    MinimizeBox = false
+            //};
+
+            //CheckedListBox listBox = new CheckedListBox()
+            //{
+            //    Left = 10,
+            //    Top = 10,
+            //    Width = 360,
+            //    Height = 240
+            //};
+
+            //// Сопоставим displayName с ID
+            //Dictionary<string, int> displayNameToId = new Dictionary<string, int>();
+
+            //foreach (var file in attachedFiles)
+            //{
+            //    string displayName = file.fileName;
+
+            //    if (displayNameToId.ContainsKey(displayName))
+            //        displayName += $" ({file.id})"; // если имена совпадают, добавим id
+
+            //    displayNameToId[displayName] = file.id;
+            //    listBox.Items.Add(displayName);
+            //}
+
+            //Button okButton = new Button()
+            //{
+            //    Text = "Подписать",
+            //    Left = 200,
+            //    Width = 80,
+            //    Top = 265,
+            //    DialogResult = DialogResult.OK
+            //};
+
+            //Button cancelButton = new Button()
+            //{
+            //    Text = "Отмена",
+            //    Left = 290,
+            //    Width = 80,
+            //    Top = 265,
+            //    DialogResult = DialogResult.Cancel
+            //};
+
+            //dialog.Controls.Add(listBox);
+            //dialog.Controls.Add(okButton);
+            //dialog.Controls.Add(cancelButton);
+            //dialog.AcceptButton = okButton;
+            //dialog.CancelButton = cancelButton;
+
+            //if (dialog.ShowDialog() == DialogResult.OK)
+            //{
+            //    List<int> selectedIds = new List<int>();
+
+            //    foreach (var item in listBox.CheckedItems)
+            //    {
+            //        string displayName = item.ToString();
+            //        if (displayNameToId.TryGetValue(displayName, out int id))
+            //        {
+            //            selectedIds.Add(id);
+            //        }
+            //    }
+
+            //    return selectedIds;
+            //}
+
+            //return null;
         }
 
 
@@ -3607,6 +3637,77 @@ WHERE draft_id = @draftId AND is_draft = 1";
             //        checkBox1.Checked = false;
             //    }
             //}
+        }
+
+        private void pictureBox2_Click(object sender, EventArgs e)
+        {
+            List<(string fileName, byte[] fileData)> filesToSave = new List<(string, byte[])>();
+
+            using (MySqlConnection conn = new MySqlConnection("server=localhost;user=root;password=1111;database=document_system;"))
+            {
+                conn.Open();
+
+                if (openedDraftId.HasValue)
+                {
+                    // Загружаем документы черновика по draft_id и is_draft = 1
+                    string query = "SELECT filename, filedata FROM documents WHERE draft_id = @draftId AND is_draft = 1";
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@draftId", openedDraftId.Value);
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string fileName = reader.GetString("filename");
+                                byte[] fileData = (byte[])reader["filedata"];
+                                filesToSave.Add((fileName, fileData));
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Обычные документы берем из уже загруженного списка attachedFiles
+                    foreach (var file in attachedFiles)
+                    {
+                        filesToSave.Add((file.fileName, file.fileData));
+                    }
+                }
+            }
+
+            // Проверка: если документов нет
+            if (filesToSave.Count == 0)
+            {
+                MessageBox.Show("Нет документов для скачивания",
+                                "Документы отсутствуют",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Information);
+                return;
+            }
+
+            //DialogResult confirm = MessageBox.Show("Вы уверены, что хотите скачать все прикреплённые документы?",
+            //                                       "Подтверждение",
+            //                                       MessageBoxButtons.YesNo,
+            //                                       MessageBoxIcon.Question);
+
+            using (FolderBrowserDialog dialog = new FolderBrowserDialog())
+            {
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    string folderPath = dialog.SelectedPath;
+
+                    foreach (var file in filesToSave)
+                    {
+                        string path = Path.Combine(folderPath, file.fileName);
+                        File.WriteAllBytes(path, file.fileData);
+                    }
+
+                    MessageBox.Show("Все документы успешно сохранены!",
+                                    "Успех",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Information);
+                }
+            }
         }
     }
 }

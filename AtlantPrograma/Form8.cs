@@ -33,6 +33,7 @@ namespace AtlantPrograma
 
             скачатьВсеДокументыToolStripMenuItem.Enabled = false;
             просмотретьДокументыToolStripMenuItem.Enabled = false;
+            toolTip1.SetToolTip(pictureBox1, "Прикрепить документы");
         }
 
         private void Form8_Load(object sender, EventArgs e)
@@ -346,6 +347,9 @@ namespace AtlantPrograma
             }
 
             Task.Run(() => CleanOldTempDocuments());
+            Form6 form6updatete = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+
+            form6updatete?.UpdateMessageCounters();
 
             MessageBox.Show("Письмо успешно отправлено сотрудникам выбранных отделов!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
             this.Close();
@@ -651,7 +655,6 @@ namespace AtlantPrograma
                 CheckOnClick = true
             };
 
-            // Получаем отображаемые имена и соответствующие ID
             var displayList = GetDisplayNamesWithSizes(files);
             Dictionary<string, int> nameToIdMap = new Dictionary<string, int>();
 
@@ -661,8 +664,23 @@ namespace AtlantPrograma
                 nameToIdMap[displayName] = id;
             }
 
-            Button ok = new Button() { Text = "Открыть", Left = 210, Width = 75, Top = 230, DialogResult = DialogResult.OK };
-            Button cancel = new Button() { Text = "Отмена", Left = 295, Width = 75, Top = 230, DialogResult = DialogResult.Cancel };
+            Button ok = new Button()
+            {
+                Text = "Открыть",
+                Left = 210,
+                Width = 75,
+                Top = 230
+                // DialogResult НЕ указываем — обрабатываем вручную
+            };
+
+            Button cancel = new Button()
+            {
+                Text = "Отмена",
+                Left = 295,
+                Width = 75,
+                Top = 230,
+                DialogResult = DialogResult.Cancel
+            };
 
             prompt.Controls.Add(label);
             prompt.Controls.Add(listBox);
@@ -670,6 +688,27 @@ namespace AtlantPrograma
             prompt.Controls.Add(cancel);
             prompt.AcceptButton = ok;
             prompt.CancelButton = cancel;
+
+            ok.Click += (sender, e) =>
+            {
+                if (listBox.CheckedItems.Count == 0)
+                {
+                    MessageBox.Show("Пожалуйста, выберите хотя бы один документ!", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                DialogResult confirm = MessageBox.Show(
+                    $"Вы действительно хотите открыть {listBox.CheckedItems.Count} документ(а)(ов)? Продолжить?",
+                    "Подтверждение",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (confirm == DialogResult.Yes)
+                {
+                    prompt.DialogResult = DialogResult.OK;
+                    prompt.Close();
+                }
+            };
 
             if (prompt.ShowDialog() == DialogResult.OK)
             {
@@ -689,6 +728,67 @@ namespace AtlantPrograma
             }
 
             return null;
+
+            //Form prompt = new Form()
+            //{
+            //    Width = 400,
+            //    Height = 320,
+            //    Text = "Выберите документы",
+            //    StartPosition = FormStartPosition.CenterParent,
+            //    FormBorderStyle = FormBorderStyle.FixedDialog,
+            //    MaximizeBox = false,
+            //    MinimizeBox = false
+            //};
+
+            //Label label = new Label() { Left = 10, Top = 10, Text = "Доступные документы:", AutoSize = true };
+
+            //CheckedListBox listBox = new CheckedListBox()
+            //{
+            //    Left = 10,
+            //    Top = 35,
+            //    Width = 360,
+            //    Height = 180,
+            //    CheckOnClick = true
+            //};
+
+            //// Получаем отображаемые имена и соответствующие ID
+            //var displayList = GetDisplayNamesWithSizes(files);
+            //Dictionary<string, int> nameToIdMap = new Dictionary<string, int>();
+
+            //foreach (var (displayName, id) in displayList)
+            //{
+            //    listBox.Items.Add(displayName);
+            //    nameToIdMap[displayName] = id;
+            //}
+
+            //Button ok = new Button() { Text = "Открыть", Left = 210, Width = 75, Top = 230, DialogResult = DialogResult.OK };
+            //Button cancel = new Button() { Text = "Отмена", Left = 295, Width = 75, Top = 230, DialogResult = DialogResult.Cancel };
+
+            //prompt.Controls.Add(label);
+            //prompt.Controls.Add(listBox);
+            //prompt.Controls.Add(ok);
+            //prompt.Controls.Add(cancel);
+            //prompt.AcceptButton = ok;
+            //prompt.CancelButton = cancel;
+
+            //if (prompt.ShowDialog() == DialogResult.OK)
+            //{
+            //    List<int> selectedIds = new List<int>();
+
+            //    foreach (var item in listBox.CheckedItems)
+            //    {
+            //        string displayName = item.ToString();
+
+            //        if (nameToIdMap.TryGetValue(displayName, out int id))
+            //        {
+            //            selectedIds.Add(id);
+            //        }
+            //    }
+
+            //    return selectedIds;
+            //}
+
+            //return null;
         }
 
         private int documentEditCounter = 0;
@@ -1026,8 +1126,8 @@ namespace AtlantPrograma
                 Text = "Удалить",
                 Left = 200,
                 Width = 80,
-                Top = 265,
-                DialogResult = DialogResult.OK
+                Top = 265
+                // Убираем DialogResult — будем обрабатывать вручную
             };
 
             Button cancelButton = new Button()
@@ -1044,6 +1144,27 @@ namespace AtlantPrograma
             dialog.Controls.Add(cancelButton);
             dialog.AcceptButton = deleteButton;
             dialog.CancelButton = cancelButton;
+
+            deleteButton.Click += (sender, e) =>
+            {
+                if (listBox.CheckedItems.Count == 0)
+                {
+                    MessageBox.Show("Пожалуйста, выберите хотя бы один документ!", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                DialogResult confirm = MessageBox.Show(
+                    $"Вы действительно хотите удалить {listBox.CheckedItems.Count} документ(а)(ов)? Продолжить?",
+                    "Подтверждение удаления",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (confirm == DialogResult.Yes)
+                {
+                    dialog.DialogResult = DialogResult.OK;
+                    dialog.Close();
+                }
+            };
 
             if (dialog.ShowDialog() == DialogResult.OK)
             {
@@ -1072,6 +1193,86 @@ namespace AtlantPrograma
                 if (comboBox3.Items.Count == 0)
                     comboBox3.Text = "Пусто";
             }
+
+            //Form dialog = new Form()
+            //{
+            //    Width = 400,
+            //    Height = 350,
+            //    FormBorderStyle = FormBorderStyle.FixedDialog,
+            //    Text = "Выбор документов для удаления",
+            //    StartPosition = FormStartPosition.CenterParent,
+            //    MaximizeBox = false,
+            //    MinimizeBox = false
+            //};
+
+            //CheckedListBox listBox = new CheckedListBox()
+            //{
+            //    Left = 10,
+            //    Top = 10,
+            //    Width = 360,
+            //    Height = 240
+            //};
+
+            //var displayNamesWithIds = GetDisplayNamesWithSizes(files);
+            //Dictionary<string, int> displayNameToId = new Dictionary<string, int>();
+
+            //foreach (var (displayName, id) in displayNamesWithIds)
+            //{
+            //    listBox.Items.Add(displayName);
+            //    displayNameToId[displayName] = id;
+            //}
+
+            //Button deleteButton = new Button()
+            //{
+            //    Text = "Удалить",
+            //    Left = 200,
+            //    Width = 80,
+            //    Top = 265,
+            //    DialogResult = DialogResult.OK
+            //};
+
+            //Button cancelButton = new Button()
+            //{
+            //    Text = "Отмена",
+            //    Left = 290,
+            //    Width = 80,
+            //    Top = 265,
+            //    DialogResult = DialogResult.Cancel
+            //};
+
+            //dialog.Controls.Add(listBox);
+            //dialog.Controls.Add(deleteButton);
+            //dialog.Controls.Add(cancelButton);
+            //dialog.AcceptButton = deleteButton;
+            //dialog.CancelButton = cancelButton;
+
+            //if (dialog.ShowDialog() == DialogResult.OK)
+            //{
+            //    var selectedDisplayNames = listBox.CheckedItems.Cast<string>().ToList();
+
+            //    foreach (var displayName in selectedDisplayNames)
+            //    {
+            //        if (displayNameToId.TryGetValue(displayName, out int id))
+            //        {
+            //            var selectedFile = files.FirstOrDefault(f => f.id == id);
+
+            //            if (selectedFile.fileData != null)
+            //            {
+            //                // Удаляем только локально, без работы с базой
+            //                attachedFiles.Remove(selectedFile);
+            //                comboBox3.Items.Remove(selectedFile.fileName);
+            //            }
+            //        }
+            //    }
+
+            //    // Также удалим временные файлы на всякий случай
+            //    Task.Run(() => CleanOldTempDocuments());
+
+            //    MessageBox.Show("Выбранные документы были удалены!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            //    if (comboBox3.Items.Count == 0)
+            //        comboBox3.Text = "Пусто";
+            //}
         }
 
         private void очиститьСписокПрикреплённыхСообщенийToolStripMenuItem_Click_1(object sender, EventArgs e)
@@ -1161,8 +1362,8 @@ namespace AtlantPrograma
                 Text = "Подписать",
                 Left = 200,
                 Width = 80,
-                Top = 265,
-                DialogResult = DialogResult.OK
+                Top = 265
+                // DialogResult убираем — обрабатываем вручную
             };
 
             Button cancelButton = new Button()
@@ -1180,23 +1381,127 @@ namespace AtlantPrograma
             dialog.AcceptButton = okButton;
             dialog.CancelButton = cancelButton;
 
-            if (dialog.ShowDialog() == DialogResult.OK)
-            {
-                List<int> selectedIds = new List<int>();
+            List<int> selectedIds = null;
 
-                foreach (var item in listBox.CheckedItems)
+            okButton.Click += (sender, e) =>
+            {
+                if (listBox.CheckedItems.Count == 0)
                 {
-                    string displayName = item.ToString();
-                    if (displayNameToId.TryGetValue(displayName, out int id))
-                    {
-                        selectedIds.Add(id);
-                    }
+                    MessageBox.Show("Пожалуйста, выберите хотя бы один документ!", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
                 }
 
+                DialogResult confirm = MessageBox.Show(
+                    $"Подписать {listBox.CheckedItems.Count} документ(а)(ов)? Продолжить?",
+                    "Подтверждение подписи",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (confirm == DialogResult.Yes)
+                {
+                    selectedIds = new List<int>();
+
+                    foreach (var item in listBox.CheckedItems)
+                    {
+                        string displayName = item.ToString();
+                        if (displayNameToId.TryGetValue(displayName, out int id))
+                        {
+                            selectedIds.Add(id);
+                        }
+                    }
+
+                    dialog.DialogResult = DialogResult.OK;
+                    dialog.Close();
+                }
+            };
+
+            if (dialog.ShowDialog() == DialogResult.OK)
                 return selectedIds;
-            }
 
             return null;
+
+            //// Если нет прикреплённых файлов — выход
+            //if (attachedFiles.Count == 0)
+            //{
+            //    MessageBox.Show("Нет документов для подписания", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            //    return null;
+            //}
+
+            //// Создаём диалоговое окно
+            //Form dialog = new Form()
+            //{
+            //    Width = 400,
+            //    Height = 350,
+            //    FormBorderStyle = FormBorderStyle.FixedDialog,
+            //    Text = "Выбор документов для подписи",
+            //    StartPosition = FormStartPosition.CenterParent,
+            //    MaximizeBox = false,
+            //    MinimizeBox = false
+            //};
+
+            //CheckedListBox listBox = new CheckedListBox()
+            //{
+            //    Left = 10,
+            //    Top = 10,
+            //    Width = 360,
+            //    Height = 240
+            //};
+
+            //// Сопоставим displayName с ID
+            //Dictionary<string, int> displayNameToId = new Dictionary<string, int>();
+
+            //foreach (var file in attachedFiles)
+            //{
+            //    string displayName = file.fileName;
+
+            //    if (displayNameToId.ContainsKey(displayName))
+            //        displayName += $" ({file.id})"; // если имена совпадают, добавим id
+
+            //    displayNameToId[displayName] = file.id;
+            //    listBox.Items.Add(displayName);
+            //}
+
+            //Button okButton = new Button()
+            //{
+            //    Text = "Подписать",
+            //    Left = 200,
+            //    Width = 80,
+            //    Top = 265,
+            //    DialogResult = DialogResult.OK
+            //};
+
+            //Button cancelButton = new Button()
+            //{
+            //    Text = "Отмена",
+            //    Left = 290,
+            //    Width = 80,
+            //    Top = 265,
+            //    DialogResult = DialogResult.Cancel
+            //};
+
+            //dialog.Controls.Add(listBox);
+            //dialog.Controls.Add(okButton);
+            //dialog.Controls.Add(cancelButton);
+            //dialog.AcceptButton = okButton;
+            //dialog.CancelButton = cancelButton;
+
+            //if (dialog.ShowDialog() == DialogResult.OK)
+            //{
+            //    List<int> selectedIds = new List<int>();
+
+            //    foreach (var item in listBox.CheckedItems)
+            //    {
+            //        string displayName = item.ToString();
+            //        if (displayNameToId.TryGetValue(displayName, out int id))
+            //        {
+            //            selectedIds.Add(id);
+            //        }
+            //    }
+
+            //    return selectedIds;
+            //}
+
+            //return null;
         }
 
         private byte[] AddSealToDocument(byte[] docData, string sealPath, string fileName)

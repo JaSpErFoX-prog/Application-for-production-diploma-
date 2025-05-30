@@ -79,15 +79,15 @@
             this.panel1.Controls.Add(this.button1);
             this.panel1.Location = new System.Drawing.Point(4, 116);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(177, 320);
+            this.panel1.Size = new System.Drawing.Size(177, 366);
             this.panel1.TabIndex = 0;
             // 
             // button7
             // 
             this.button7.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.button7.Location = new System.Drawing.Point(3, 222);
+            this.button7.Location = new System.Drawing.Point(4, 243);
             this.button7.Name = "button7";
-            this.button7.Size = new System.Drawing.Size(171, 43);
+            this.button7.Size = new System.Drawing.Size(171, 62);
             this.button7.TabIndex = 5;
             this.button7.Text = "Прочитанные";
             this.button7.UseVisualStyleBackColor = true;
@@ -96,9 +96,9 @@
             // button5
             // 
             this.button5.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.button5.Location = new System.Drawing.Point(4, 271);
+            this.button5.Location = new System.Drawing.Point(3, 311);
             this.button5.Name = "button5";
-            this.button5.Size = new System.Drawing.Size(171, 43);
+            this.button5.Size = new System.Drawing.Size(172, 43);
             this.button5.TabIndex = 4;
             this.button5.Text = "Корзина";
             this.button5.UseVisualStyleBackColor = true;
@@ -120,7 +120,7 @@
             this.button3.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
             this.button3.Location = new System.Drawing.Point(4, 173);
             this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(171, 43);
+            this.button3.Size = new System.Drawing.Size(171, 64);
             this.button3.TabIndex = 2;
             this.button3.Text = "Отправленные";
             this.button3.UseVisualStyleBackColor = true;
@@ -142,7 +142,7 @@
             this.button1.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
             this.button1.Location = new System.Drawing.Point(3, 3);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(171, 43);
+            this.button1.Size = new System.Drawing.Size(170, 43);
             this.button1.TabIndex = 0;
             this.button1.Text = "Входящие";
             this.button1.UseVisualStyleBackColor = true;
