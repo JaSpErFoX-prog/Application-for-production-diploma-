@@ -571,16 +571,21 @@ namespace AtlantPrograma
 
         private void pictureBox1_Click(object sender, EventArgs e)
         {
-            OpenFileDialog openFileDialog1 = new OpenFileDialog
-            {
-                Multiselect = true,
-                Title = "Выберите документы для прикрепления",
-                Filter = "Документы (*.doc;*.docx;*.xls;*.xlsx;*.pdf)|*.doc;*.docx;*.xls;*.xlsx;*.pdf"
-            };
+            string[] allowedExtensions = { ".doc", ".docx", ".xls", ".xlsx", ".pdf" };
 
-            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            while (true)
             {
-                string[] allowedExtensions = { ".doc", ".docx", ".xls", ".xlsx", ".pdf" };
+                OpenFileDialog openFileDialog1 = new OpenFileDialog
+                {
+                    Multiselect = true,
+                    Title = "Выберите документы для прикрепления",
+                    Filter = "Документы (*.doc;*.docx;*.xls;*.xlsx;*.pdf)|*.doc;*.docx;*.xls;*.xlsx;*.pdf"
+                };
+
+                if (openFileDialog1.ShowDialog() != DialogResult.OK)
+                {
+                    break; // пользователь нажал "Отмена"
+                }
 
                 foreach (string file in openFileDialog1.FileNames)
                 {
@@ -595,29 +600,21 @@ namespace AtlantPrograma
 
                     byte[] fileBytes = File.ReadAllBytes(file);
                     string fileHash = GetFileHash(fileBytes);
-
-                    // Проверка на дубликаты по хэшу
-
                     string fileName = Path.GetFileName(file);
 
+                    // Проверка на дубликаты по имени и размеру
                     bool alreadyAttached = attachedFiles.Any(f => f.fileName == fileName && f.fileData.Length == fileBytes.Length);
-
                     if (alreadyAttached)
                     {
-                        MessageBox.Show("Файл \"" + Path.GetFileName(file) + "\" уже был прикреплён (по содержимому) и не будет добавлен повторно",
+                        MessageBox.Show("Файл \"" + fileName + "\" уже был прикреплён (по содержимому) и не будет добавлен повторно",
                             "Дубликат файла", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         continue;
                     }
 
-                    //string fileName = Path.GetFileName(file);
-
-                    // Получаем уникальный id для файла
                     int newId = GetNextId();
-
-                    // Добавляем файл с уникальным id
                     attachedFiles.Add((newId, fileName, fileBytes, extension, fileHash));
 
-                    // 🆕 Добавляем в список оригиналов, если ещё не добавлен документ с таким ID
+                    // Добавляем в оригиналы, если такого ID ещё не было
                     bool originalAlreadyExists = originalAttachedFiles.Any(f => f.id == newId);
                     if (!originalAlreadyExists)
                     {
@@ -627,8 +624,67 @@ namespace AtlantPrograma
                     comboBox3.Items.Add(fileName);
                     comboBox3.Text = "Прикреплённые документы:";
                 }
+
+                UpdateComboBox3(); // Обновляем после каждой порции файлов
             }
-            UpdateComboBox3();
+            //OpenFileDialog openFileDialog1 = new OpenFileDialog
+            //{
+            //    Multiselect = true,
+            //    Title = "Выберите документы для прикрепления",
+            //    Filter = "Документы (*.doc;*.docx;*.xls;*.xlsx;*.pdf)|*.doc;*.docx;*.xls;*.xlsx;*.pdf"
+            //};
+
+            //if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            //{
+            //    string[] allowedExtensions = { ".doc", ".docx", ".xls", ".xlsx", ".pdf" };
+
+            //    foreach (string file in openFileDialog1.FileNames)
+            //    {
+            //        string extension = Path.GetExtension(file).ToLower();
+
+            //        if (!allowedExtensions.Contains(extension))
+            //        {
+            //            MessageBox.Show("Файл \"" + Path.GetFileName(file) + "\" имеет недопустимый формат и не будет добавлен!",
+            //                "Недопустимый формат", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            //            continue;
+            //        }
+
+            //        byte[] fileBytes = File.ReadAllBytes(file);
+            //        string fileHash = GetFileHash(fileBytes);
+
+            //        // Проверка на дубликаты по хэшу
+
+            //        string fileName = Path.GetFileName(file);
+
+            //        bool alreadyAttached = attachedFiles.Any(f => f.fileName == fileName && f.fileData.Length == fileBytes.Length);
+
+            //        if (alreadyAttached)
+            //        {
+            //            MessageBox.Show("Файл \"" + Path.GetFileName(file) + "\" уже был прикреплён (по содержимому) и не будет добавлен повторно",
+            //                "Дубликат файла", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            //            continue;
+            //        }
+
+            //        //string fileName = Path.GetFileName(file);
+
+            //        // Получаем уникальный id для файла
+            //        int newId = GetNextId();
+
+            //        // Добавляем файл с уникальным id
+            //        attachedFiles.Add((newId, fileName, fileBytes, extension, fileHash));
+
+            //        // 🆕 Добавляем в список оригиналов, если ещё не добавлен документ с таким ID
+            //        bool originalAlreadyExists = originalAttachedFiles.Any(f => f.id == newId);
+            //        if (!originalAlreadyExists)
+            //        {
+            //            originalAttachedFiles.Add((newId, fileName, (byte[])fileBytes.Clone(), extension, fileHash));
+            //        }
+
+            //        comboBox3.Items.Add(fileName);
+            //        comboBox3.Text = "Прикреплённые документы:";
+            //    }
+            //}
+            //UpdateComboBox3();
         }
 
         private List<int> ShowDocumentSelectionDialogWithIds(List<(int id, string fileName, byte[] fileData, string fileType, string fileHash)> files)
@@ -1506,6 +1562,7 @@ namespace AtlantPrograma
 
         private byte[] AddSealToDocument(byte[] docData, string sealPath, string fileName)
         {
+
             string tempDocPath = Path.GetTempFileName();
             string tempOutputPath = Path.GetTempFileName();
             File.WriteAllBytes(tempDocPath, docData);
@@ -1533,9 +1590,12 @@ namespace AtlantPrograma
 
                         if (!find.Execute()) break;
 
-                        range.InlineShapes.AddPicture(sealPath, false, true, range);
-                        range.Collapse(Microsoft.Office.Interop.Word.WdCollapseDirection.wdCollapseEnd);
+                        var position = range.Duplicate;
+                        position.Collapse(Microsoft.Office.Interop.Word.WdCollapseDirection.wdCollapseStart);
+                        position.InlineShapes.AddPicture(sealPath, false, true, position);
                         sealInserted = true;
+
+                        range.Collapse(Microsoft.Office.Interop.Word.WdCollapseDirection.wdCollapseEnd);
                     }
 
                     if (!sealInserted)
@@ -1573,34 +1633,45 @@ namespace AtlantPrograma
                                 }
                                 pageIndex++;
                             }
+
+                            // Если нет "М.П.", ищем последнее слово
+                            if (positions.Count == 0)
+                            {
+                                var lastWord = pdfDoc.GetPages()
+                                    .SelectMany(p => p.GetWords().Select(w => (page: p, word: w)))
+                                    .LastOrDefault();
+
+                                if (lastWord.word != null)
+                                {
+                                    double x = lastWord.word.BoundingBox.Left + 5;
+                                    double y = lastWord.page.Height - lastWord.word.BoundingBox.Top - 5;
+                                    positions.Add(Tuple.Create(lastWord.page.Number - 1, x, y));
+                                }
+                                else
+                                {
+                                    // Если даже слов нет — ставим внизу последней страницы
+                                    var lastPage = pdfDoc.GetPages().LastOrDefault();
+                                    if (lastPage != null)
+                                    {
+                                        positions.Add(Tuple.Create(lastPage.Number - 1, 50.0, lastPage.Height - 150));
+                                    }
+                                }
+                            }
                         }
 
                         using (var input2 = new MemoryStream(docData))
                         {
                             var document = PdfSharp.Pdf.IO.PdfReader.Open(input2, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Modify);
-                            var sealImage = XImage.FromFile(sealPath);
+                            var sealImage = PdfSharp.Drawing.XImage.FromFile(sealPath);
                             double sealWidth = 100;
                             double sealHeight = 100;
 
-                            if (positions.Count > 0)
+                            foreach (var tuple in positions)
                             {
-                                foreach (var tuple in positions)
+                                var page = document.Pages[tuple.Item1];
+                                using (var gfx = PdfSharp.Drawing.XGraphics.FromPdfPage(page, PdfSharp.Drawing.XGraphicsPdfPageOptions.Append))
                                 {
-                                    var page = document.Pages[tuple.Item1];
-                                    using (XGraphics gfx = XGraphics.FromPdfPage(page, XGraphicsPdfPageOptions.Append))
-                                    {
-                                        gfx.DrawImage(sealImage, tuple.Item2, tuple.Item3, sealWidth, sealHeight);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                var lastPage = document.Pages[document.Pages.Count - 1];
-                                using (XGraphics gfx = XGraphics.FromPdfPage(lastPage, XGraphicsPdfPageOptions.Append))
-                                {
-                                    double x = 50;
-                                    double y = lastPage.Height - 150;
-                                    gfx.DrawImage(sealImage, x, y, sealWidth, sealHeight);
+                                    gfx.DrawImage(sealImage, tuple.Item2, tuple.Item3, sealWidth, sealHeight);
                                 }
                             }
 
@@ -1632,12 +1703,12 @@ namespace AtlantPrograma
                         }
                         else
                         {
-                            var lastRow = usedRange.Row + usedRange.Rows.Count;
-                            var firstCol = usedRange.Column;
+                            int lastRow = usedRange.Row + usedRange.Rows.Count - 1;
+                            int lastCol = usedRange.Column + usedRange.Columns.Count - 1;
 
-                            var bottomCell = (Microsoft.Office.Interop.Excel.Range)sheet.Cells[lastRow, firstCol];
-                            float left = (float)bottomCell.Left;
-                            float top = (float)bottomCell.Top;
+                            var bottomRightCell = (Microsoft.Office.Interop.Excel.Range)sheet.Cells[lastRow, lastCol];
+                            float left = (float)bottomRightCell.Left;
+                            float top = (float)bottomRightCell.Top;
 
                             sheet.Shapes.AddPicture(sealPath,
                                 Microsoft.Office.Core.MsoTriState.msoFalse,
@@ -1668,6 +1739,168 @@ namespace AtlantPrograma
                 try { if (File.Exists(tempDocPath)) File.Delete(tempDocPath); } catch { }
                 try { if (File.Exists(tempOutputPath)) File.Delete(tempOutputPath); } catch { }
             }
+            //string tempDocPath = Path.GetTempFileName();
+            //string tempOutputPath = Path.GetTempFileName();
+            //File.WriteAllBytes(tempDocPath, docData);
+
+            //string extension = Path.GetExtension(fileName).ToLower();
+
+            //try
+            //{
+            //    if (extension == ".doc" || extension == ".docx")
+            //    {
+            //        var wordApp = new Microsoft.Office.Interop.Word.Application();
+            //        var doc = wordApp.Documents.Open(tempDocPath, ReadOnly: false, Visible: false);
+            //        wordApp.Visible = false;
+
+            //        var range = doc.Content;
+            //        bool sealInserted = false;
+
+            //        while (true)
+            //        {
+            //            var find = range.Find;
+            //            find.ClearFormatting();
+            //            find.Text = "М.П.";
+            //            find.Forward = true;
+            //            find.Wrap = Microsoft.Office.Interop.Word.WdFindWrap.wdFindStop;
+
+            //            if (!find.Execute()) break;
+
+            //            range.InlineShapes.AddPicture(sealPath, false, true, range);
+            //            range.Collapse(Microsoft.Office.Interop.Word.WdCollapseDirection.wdCollapseEnd);
+            //            sealInserted = true;
+            //        }
+
+            //        if (!sealInserted)
+            //        {
+            //            var endRange = doc.Content;
+            //            endRange.Collapse(Microsoft.Office.Interop.Word.WdCollapseDirection.wdCollapseEnd);
+            //            endRange.InlineShapes.AddPicture(sealPath, false, true, endRange);
+            //        }
+
+            //        doc.SaveAs2(tempOutputPath);
+            //        doc.Close(false);
+            //        wordApp.Quit();
+
+            //        return File.ReadAllBytes(tempOutputPath);
+            //    }
+            //    else if (extension == ".pdf")
+            //    {
+            //        using (var input = new MemoryStream(docData))
+            //        using (var output = new MemoryStream())
+            //        {
+            //            var positions = new List<Tuple<int, double, double>>();
+
+            //            using (var pdfDoc = UglyToad.PdfPig.PdfDocument.Open(input))
+            //            {
+            //                int pageIndex = 0;
+            //                foreach (var page in pdfDoc.GetPages())
+            //                {
+            //                    var words = page.GetWords();
+            //                    var mpWords = words.Where(w => w.Text.Contains("М.П.")).ToList();
+            //                    foreach (var word in mpWords)
+            //                    {
+            //                        double x = word.BoundingBox.Left;
+            //                        double y = page.Height - word.BoundingBox.Top;
+            //                        positions.Add(Tuple.Create(pageIndex, x + 5, y - 5));
+            //                    }
+            //                    pageIndex++;
+            //                }
+            //            }
+
+            //            using (var input2 = new MemoryStream(docData))
+            //            {
+            //                var document = PdfSharp.Pdf.IO.PdfReader.Open(input2, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Modify);
+            //                var sealImage = XImage.FromFile(sealPath);
+            //                double sealWidth = 100;
+            //                double sealHeight = 100;
+
+            //                if (positions.Count > 0)
+            //                {
+            //                    foreach (var tuple in positions)
+            //                    {
+            //                        var page = document.Pages[tuple.Item1];
+            //                        using (XGraphics gfx = XGraphics.FromPdfPage(page, XGraphicsPdfPageOptions.Append))
+            //                        {
+            //                            gfx.DrawImage(sealImage, tuple.Item2, tuple.Item3, sealWidth, sealHeight);
+            //                        }
+            //                    }
+            //                }
+            //                else
+            //                {
+            //                    var lastPage = document.Pages[document.Pages.Count - 1];
+            //                    using (XGraphics gfx = XGraphics.FromPdfPage(lastPage, XGraphicsPdfPageOptions.Append))
+            //                    {
+            //                        double x = 50;
+            //                        double y = lastPage.Height - 150;
+            //                        gfx.DrawImage(sealImage, x, y, sealWidth, sealHeight);
+            //                    }
+            //                }
+
+            //                document.Save(output);
+            //                return output.ToArray();
+            //            }
+            //        }
+            //    }
+            //    else if (extension == ".xlsx" || extension == ".xls")
+            //    {
+            //        var excelApp = new Microsoft.Office.Interop.Excel.Application();
+            //        var workbook = excelApp.Workbooks.Open(tempDocPath);
+            //        excelApp.Visible = false;
+
+            //        foreach (Microsoft.Office.Interop.Excel.Worksheet sheet in workbook.Sheets)
+            //        {
+            //            var usedRange = sheet.UsedRange;
+            //            var findRange = usedRange.Find("М.П.");
+
+            //            if (findRange != null)
+            //            {
+            //                float leftPos = (float)findRange.Left;
+            //                float topPos = (float)findRange.Top;
+
+            //                sheet.Shapes.AddPicture(sealPath,
+            //                    Microsoft.Office.Core.MsoTriState.msoFalse,
+            //                    Microsoft.Office.Core.MsoTriState.msoCTrue,
+            //                    leftPos + 20, topPos, 100, 100);
+            //            }
+            //            else
+            //            {
+            //                var lastRow = usedRange.Row + usedRange.Rows.Count;
+            //                var firstCol = usedRange.Column;
+
+            //                var bottomCell = (Microsoft.Office.Interop.Excel.Range)sheet.Cells[lastRow, firstCol];
+            //                float left = (float)bottomCell.Left;
+            //                float top = (float)bottomCell.Top;
+
+            //                sheet.Shapes.AddPicture(sealPath,
+            //                    Microsoft.Office.Core.MsoTriState.msoFalse,
+            //                    Microsoft.Office.Core.MsoTriState.msoCTrue,
+            //                    left + 20, top + 20, 100, 100);
+            //            }
+            //        }
+
+            //        workbook.SaveAs(tempOutputPath);
+            //        workbook.Close(false);
+            //        excelApp.Quit();
+
+            //        return File.ReadAllBytes(tempOutputPath);
+            //    }
+            //    else
+            //    {
+            //        MessageBox.Show("Неподдерживаемый формат для вставки печати", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            //        return docData;
+            //    }
+            //}
+            //catch (Exception ex)
+            //{
+            //    MessageBox.Show($"Ошибка вставки печати: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            //    return docData;
+            //}
+            //finally
+            //{
+            //    try { if (File.Exists(tempDocPath)) File.Delete(tempDocPath); } catch { }
+            //    try { if (File.Exists(tempOutputPath)) File.Delete(tempOutputPath); } catch { }
+            //}
         }
 
         private void InsertSealIntoDocuments(List<int> selectedDocIds)

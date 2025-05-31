@@ -1,4 +1,5 @@
 ﻿using MySql.Data.MySqlClient;
+using MySqlX.XDevAPI.Common;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -21,10 +22,11 @@ namespace AtlantPrograma
             Incoming,
             Sent,
             Drafts,
-            Read
+            Read,
+            None = 4,
         }
 
-        ViewMode currentViewMode; // текущий режим
+        ViewMode currentViewMode=ViewMode.None; // текущий режим
 
         public Form6(string username)
         {
@@ -34,16 +36,15 @@ namespace AtlantPrograma
             dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
             UpdateMessageCounters();
             LoadIncomingMessages();
+            currentViewMode = ViewMode.Incoming;
             //dataGridView1.ContextMenuStrip = contextMenuStrip1;
-            //autoScrollTimer.Interval = 100;
+            //autoScrollTimer.Interval = 20; // чем меньше — тем быстрее прокрутка
             //autoScrollTimer.Tick += AutoScrollTimer_Tick;
-
+            //dataGridView1.CellMouseClick += DataGridView1_CellMouseClick;
+            //dataGridView1.MouseMove += DataGridView1_MouseMove;
+            //dataGridView1.MouseLeave += DataGridView1_MouseLeave;
         }
-        //private void AutoScrollTimer_Tick(object sender, EventArgs e)
-        //{
-        //    int newScroll = dataGridView1.HorizontalScrollingOffset + 20;
-        //    dataGridView1.HorizontalScrollingOffset = Math.Min(newScroll, dataGridView1.HorizontalScrollableWidth);
-        //}
+
 
 
         public void UpdateMessageCounters()
@@ -118,6 +119,12 @@ namespace AtlantPrograma
 
         private void Form6_Load(object sender, EventArgs e)
         {
+
+            autoScrollTimer.Interval = 100; // чем меньше — тем быстрее прокрутка
+            autoScrollTimer.Tick += AutoScrollTimer_Tick;
+            dataGridView1.CellMouseClick += DataGridView1_CellMouseClick;
+            dataGridView1.MouseMove += DataGridView1_MouseMove;
+            dataGridView1.MouseLeave += DataGridView1_MouseLeave;
             // Настройка автозаполнения для textBox1
             AutoCompleteStringCollection autoCompleteCollection = new AutoCompleteStringCollection();
 
@@ -174,6 +181,7 @@ namespace AtlantPrograma
 
         private void button1_Click(object sender, EventArgs e)
         {
+            currentViewMode = ViewMode.Incoming;
             currentView = "inbox";
             LoadIncomingMessages();
             действияСКорзинойToolStripMenuItem.Enabled = false;
@@ -219,7 +227,6 @@ namespace AtlantPrograma
         public void LoadIncomingMessages()
         {
             // Обновляем обработчики мыши
-            currentViewMode = ViewMode.Incoming;
 
             dataGridView1.MouseDown -= dataGridView1_MouseDown;
             dataGridView1.MouseDown -= dataGridView1_MouseDown1;
@@ -333,11 +340,12 @@ ORDER BY m.id DESC";
                     conn.Open();
 
                     // Считываем тело письма
-                    string query = "SELECT body FROM messages WHERE sender = @sender AND recipient = @recipient AND subject = @subject AND is_read = 0 LIMIT 1";
+                    string query = "SELECT body FROM messages WHERE sender = @sender AND recipient = @recipient AND subject = @subject AND is_read = 0 AND id = @id";
                     MySqlCommand cmd = new MySqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@sender", senderUsername);
                     cmd.Parameters.AddWithValue("@recipient", currentUser);
                     cmd.Parameters.AddWithValue("@subject", subject);
+                    cmd.Parameters.AddWithValue("@id", messageId);
 
                     using (MySqlDataReader reader = cmd.ExecuteReader())
                     {
@@ -352,11 +360,12 @@ ORDER BY m.id DESC";
                     }
 
                     // Обновляем флаг прочтения
-                    string updateQuery = "UPDATE messages SET is_read = 1 WHERE sender = @sender AND recipient = @recipient AND subject = @subject";
+                    string updateQuery = "UPDATE messages SET is_read = 1 WHERE sender = @sender AND recipient = @recipient AND subject = @subject AND id = @id";
                     MySqlCommand updateCmd = new MySqlCommand(updateQuery, conn);
                     updateCmd.Parameters.AddWithValue("@sender", senderUsername);
                     updateCmd.Parameters.AddWithValue("@recipient", currentUser);
                     updateCmd.Parameters.AddWithValue("@subject", subject);
+                    updateCmd.Parameters.AddWithValue("@id", messageId);
                     updateCmd.ExecuteNonQuery();
                 }
                 LoadIncomingMessages(); // Обновляем таблицу
@@ -408,6 +417,7 @@ ORDER BY m.id DESC";
 
         private void button7_Click(object sender, EventArgs e)
         {
+            currentViewMode = ViewMode.Read;
             currentView = "read";
             // Отключаем пункты меню, которые не относятся к прочитанным
             действияСпочтойToolStripMenuItem.Enabled = true;
@@ -674,6 +684,7 @@ ORDER BY m.id DESC";
 
         private void button5_Click(object sender, EventArgs e)
         {
+            currentViewMode = ViewMode.None;
             dataGridView1.MouseDown -= dataGridView1_MouseDown;
             dataGridView1.MouseDown -= dataGridView1_MouseDown1;
 
@@ -777,6 +788,7 @@ ORDER BY m.id DESC";
         }
         private void button3_Click(object sender, EventArgs e)
         {
+            currentViewMode = ViewMode.None;
             dataGridView1.MouseDown -= dataGridView1_MouseDown;
             dataGridView1.MouseDown -= dataGridView1_MouseDown1;
 
@@ -1155,6 +1167,7 @@ ORDER BY m.id DESC";
 
         private void button2_Click(object sender, EventArgs e)
         {
+            currentViewMode = ViewMode.Drafts;
             dataGridView1.MouseDown -= dataGridView1_MouseDown;
             dataGridView1.MouseDown -= dataGridView1_MouseDown1;
 
@@ -1273,15 +1286,21 @@ ORDER BY d.date_created DESC, d.time_created DESC;";
             {
                 MessageBox.Show("Ошибка при загрузке черновиков: " + ex.Message);
             }
+            //dataGridView1.CellMouseClick -= DataGridView1_CellMouseClick;
         }
+
+        //bool isClicked = false;
         private void dataGridView1_CellContentClick_1(object sender, DataGridViewCellEventArgs e)
         {
+            //currentViewMode = ViewMode.None;
+                //dataGridView1.CellMouseClick -= DataGridView1_CellMouseClick;
             // Проверяем, что клик был по ячейке в пределах данных
             if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
             {
                 // Проверяем, есть ли колонка с кнопкой "Открыть" только в таблице черновиков
                 if (dataGridView1.Columns.Contains("open_button") && e.ColumnIndex == dataGridView1.Columns["open_button"].Index)
                 {
+                    //isClicked = true;
                     // Получаем ID черновика
                     int draftId = 0;
                     if (dataGridView1.Rows[e.RowIndex].Cells["draft_id"].Value != null)
@@ -1294,6 +1313,20 @@ ORDER BY d.date_created DESC, d.time_created DESC;";
                     form7.LoadDraftForEditing(draftId);
                     form7.Show();
                 }
+                //else if (currentViewMode == ViewMode.Drafts)
+                //{
+                //    // Получаем ID черновика
+                //    int draftId = 0;
+                //    if (dataGridView1.Rows[e.RowIndex].Cells["draft_id"].Value != null)
+                //    {
+                //        draftId = (int)dataGridView1.Rows[e.RowIndex].Cells["draft_id"].Value;
+                //    }
+
+                //    // Открываем Form7 и передаем только ID
+                //    Form7 form7 = new Form7(currentUser);
+                //    form7.LoadDraftForEditing(draftId);
+                //    form7.Show();
+                //}
             }
             // Проверяем, что клик был по кнопке "Открыть"
             //if (e.ColumnIndex == dataGridView1.Columns["open_button"].Index && e.RowIndex >= 0)
@@ -1301,64 +1334,205 @@ ORDER BY d.date_created DESC, d.time_created DESC;";
             //    // Получаем ID черновика
             //    int draftId = (int)dataGridView1.Rows[e.RowIndex].Cells["draft_id"].Value;
 
-            //    // Открываем Form7 и передаем только ID
-            //    Form7 form7 = new Form7(currentUser);
-            //    form7.LoadDraftForEditing(draftId);
-            //    form7.Show();
-            //}
+                //    // Открываем Form7 и передаем только ID
+                //    Form7 form7 = new Form7(currentUser);
+                //    form7.LoadDraftForEditing(draftId);
+                //    form7.Show();
+                //}
             else
             {
                 // Если клик был по другим ячейкам, например по чекбоксам или другим столбцам, ничего не делаем
                 // В случае необходимости, сюда можно добавить обработку других типов кликов.
             }
+            //dataGridView1.CellMouseClick += DataGridView1_CellMouseClick;
         }
+
+        private DialogResult ShowMessageActionDialog()
+        {
+            Form dialog = new Form()
+            {
+                Width = 300,
+                Height = 150,
+                Text = "Выберите действие",
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                StartPosition = FormStartPosition.CenterParent,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            Label label = new Label()
+            {
+                Text = "Что вы хотите сделать с сообщением?",
+                Left = 20,
+                Top = 20,
+                Width = 250
+            };
+
+            System.Windows.Forms.Button readButton = new System.Windows.Forms.Button()
+            {
+                Text = "Прочитать",
+                DialogResult = DialogResult.Yes,
+                Left = 40,
+                Width = 100,
+                Top = 60
+            };
+
+            System.Windows.Forms.Button replyButton = new System.Windows.Forms.Button()
+            {
+                Text = "Ответить",
+                DialogResult = DialogResult.No,
+                Left = 150,
+                Width = 100,
+                Top = 60
+            };
+
+            dialog.Controls.Add(label);
+            dialog.Controls.Add(readButton);
+            dialog.Controls.Add(replyButton);
+            dialog.AcceptButton = readButton;
+            dialog.CancelButton = replyButton;
+
+            return dialog.ShowDialog();
+        }
+
 
         private void DataGridView1_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
+            //var result = ShowMessageActionDialog();
             if (e.Button == MouseButtons.Left && e.RowIndex >= 0)
             {
                 // Только если отображаются входящие или прочитанные
-                if (currentViewMode == ViewMode.Incoming || currentViewMode == ViewMode.Read)
+                if (currentViewMode == ViewMode.Incoming)
                 {
-                    var result = MessageBox.Show(
-                        "Выберите действие:\nДа — Прочитать сообщение\nНет — Ответить на сообщение",
-                        "Действие с сообщением",
-                        MessageBoxButtons.YesNoCancel,
-                        MessageBoxIcon.Question);
+                    var result = ShowMessageActionDialog();
 
                     if (result == DialogResult.Yes)
                     {
                         // Вставь сюда свой метод "прочитать сообщение"
-                        //OpenMessage(e.RowIndex); // пример
+                        // OpenMessage(e.RowIndex);
+                        прочитатьToolStripMenuItem_Click(null, null);
+
                     }
                     else if (result == DialogResult.No)
                     {
                         // Вставь сюда свой метод "ответить на сообщение"
-                        //ReplyToMessage(e.RowIndex); // пример
+                        // ReplyToMessage(e.RowIndex); 
+                        ответитьToolStripMenuItem_Click(null, null);
                     }
                 }
-                else if (currentViewMode == ViewMode.Drafts)
+                else if (currentViewMode == ViewMode.Read)
                 {
-                    // Открытие черновика без диалога
-                    //OpenDraftByIndex(e.RowIndex); // пример
+                    var result = ShowMessageActionDialog();
+
+                    if (result == DialogResult.Yes)
+                    {
+                        // Вставь сюда свой метод "прочитать сообщение"
+                        // OpenMessage(e.RowIndex);
+                        прочитатьToolStripMenuItem1_Click(null, null);
+
+                    }
+                    else if (result == DialogResult.No)
+                    {
+                        // Вставь сюда свой метод "ответить на сообщение"
+                        // ReplyToMessage(e.RowIndex); 
+                        ответитьToolStripMenuItem1_Click(null, null);
+                    }
                 }
+                //else if (currentViewMode == ViewMode.Drafts)
+                //{
+                //    // Открытие черновика без диалога
+                //    // OpenDraftByIndex(e.RowIndex);
+                //    //dataGridView1_CellContentClick_1(null);
+                //    // Получаем ID черновика
+                //    int draftId = 0;
+                //    if (dataGridView1.Rows[e.RowIndex].Cells["draft_id"].Value != null)
+                //    {
+                //        draftId = (int)dataGridView1.Rows[e.RowIndex].Cells["draft_id"].Value;
+                //    }
+
+                //    // Открываем Form7 и передаем только ID
+                //    Form7 form7 = new Form7(currentUser);
+                //    form7.LoadDraftForEditing(draftId);
+                //    form7.Show();
+                //}
+                //else
+                //{
+
+                //}
+            }
+            //currentViewMode=ViewMode.None;
+        }
+
+        Timer autoScrollTimer = new Timer();
+        string scrollDirection = null;
+
+        private void AutoScrollTimer_Tick(object sender, EventArgs e)
+        {
+            try
+            {
+                int totalWidth = dataGridView1.Columns.Cast<DataGridViewColumn>().Sum(c => c.Width);
+                int visibleWidth = dataGridView1.DisplayRectangle.Width;
+                int maxScroll = Math.Max(0, totalWidth - visibleWidth);
+
+                if (scrollDirection == "right" && dataGridView1.HorizontalScrollingOffset < maxScroll)
+                {
+                    dataGridView1.HorizontalScrollingOffset += 20;
+                }
+                else if (scrollDirection == "left" && dataGridView1.HorizontalScrollingOffset > 0)
+                {
+                    dataGridView1.HorizontalScrollingOffset = Math.Max(0, dataGridView1.HorizontalScrollingOffset - 20); // фикс
+                }
+            }
+            catch
+            {
+                autoScrollTimer.Stop();
             }
         }
 
-
-        Timer autoScrollTimer = new Timer();
+        private void DataGridView1_MouseLeave(object sender, EventArgs e)
+        {
+            autoScrollTimer.Stop();
+            scrollDirection = null;
+        }
 
 
         private void DataGridView1_MouseMove(object sender, MouseEventArgs e)
         {
-            if (e.X >= dataGridView1.Width - 10) // Навели мышку на правый край
+            int scrollZoneWidth = 100; // зона в пикселях, где начинается прокрутка
+
+            if (e.X >= dataGridView1.Width - scrollZoneWidth)
             {
-                try
-                {
-                    dataGridView1.HorizontalScrollingOffset += 20; // Прокрутить немного вправо
-                }
-                catch { } // Игнорировать ошибки выхода за пределы
+                scrollDirection = "right";
+                autoScrollTimer.Start();
             }
+            else if (e.X <= scrollZoneWidth)
+            {
+                scrollDirection = "left";
+                autoScrollTimer.Start();
+            }
+            else
+            {
+                autoScrollTimer.Stop();
+                scrollDirection = null;
+            }
+
+            //int edgeZone = 10; // чувствительная зона у краёв
+
+            //if (e.X >= dataGridView1.Width - edgeZone)
+            //{
+            //    scrollDirection = "right";
+            //    autoScrollTimer.Start();
+            //}
+            //else if (e.X <= edgeZone)
+            //{
+            //    scrollDirection = "left";
+            //    autoScrollTimer.Start();
+            //}
+            //else
+            //{
+            //    autoScrollTimer.Stop();
+            //    scrollDirection = null;
+            //}
         }
 
         public void LoadDraftMessages()
@@ -2612,11 +2786,12 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
                     conn.Open();
 
                     // Считываем тело письма без условия is_read = 0
-                    string query = "SELECT body FROM messages WHERE sender = @sender AND recipient = @recipient AND subject = @subject LIMIT 1";
+                    string query = "SELECT body FROM messages WHERE sender = @sender AND recipient = @recipient AND subject = @subject AND is_read = 1 AND id = @id";
                     MySqlCommand cmd = new MySqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@sender", senderUsername);
                     cmd.Parameters.AddWithValue("@recipient", currentUser);
                     cmd.Parameters.AddWithValue("@subject", subject);
+                    cmd.Parameters.AddWithValue("@id", messageId);
 
                     using (MySqlDataReader reader = cmd.ExecuteReader())
                     {

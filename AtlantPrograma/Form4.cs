@@ -393,9 +393,66 @@ namespace AtlantPrograma
             e.ThrowException = false;
         }
 
+        Timer autoScrollTimer = new Timer();
+        string scrollDirection = null;
+
+        private void AutoScrollTimer_Tick(object sender, EventArgs e)
+        {
+            try
+            {
+                int totalWidth = dataGridView1.Columns.Cast<DataGridViewColumn>().Sum(c => c.Width);
+                int visibleWidth = dataGridView1.DisplayRectangle.Width;
+                int maxScroll = Math.Max(0, totalWidth - visibleWidth);
+
+                if (scrollDirection == "right" && dataGridView1.HorizontalScrollingOffset < maxScroll)
+                {
+                    dataGridView1.HorizontalScrollingOffset += 20;
+                }
+                else if (scrollDirection == "left" && dataGridView1.HorizontalScrollingOffset > 0)
+                {
+                    dataGridView1.HorizontalScrollingOffset = Math.Max(0, dataGridView1.HorizontalScrollingOffset - 20); // фикс
+                }
+            }
+            catch
+            {
+                autoScrollTimer.Stop();
+            }
+        }
+
+        private void DataGridView1_MouseLeave(object sender, EventArgs e)
+        {
+            autoScrollTimer.Stop();
+            scrollDirection = null;
+        }
+
+
+        private void DataGridView1_MouseMove(object sender, MouseEventArgs e)
+        {
+            int scrollZoneWidth = 100; // зона в пикселях, где начинается прокрутка
+
+            if (e.X >= dataGridView1.Width - scrollZoneWidth)
+            {
+                scrollDirection = "right";
+                autoScrollTimer.Start();
+            }
+            else if (e.X <= scrollZoneWidth)
+            {
+                scrollDirection = "left";
+                autoScrollTimer.Start();
+            }
+            else
+            {
+                autoScrollTimer.Stop();
+                scrollDirection = null;
+            }
+        }
 
         private void Form4_Load_1(object sender, EventArgs e)
         {
+            autoScrollTimer.Interval = 100; // чем меньше — тем быстрее прокрутка
+            autoScrollTimer.Tick += AutoScrollTimer_Tick;
+            dataGridView1.MouseMove += DataGridView1_MouseMove;
+            dataGridView1.MouseLeave += DataGridView1_MouseLeave;
             LoadUsers();  // Загрузка всех пользователей при открытии формы
             SetupSearchAutoComplete();  // Настройка автозаполнения для поиска
             textBox1.TextChanged += textBox1_TextChanged;
