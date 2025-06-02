@@ -43,6 +43,7 @@ namespace AtlantPrograma
             //dataGridView1.CellMouseClick += DataGridView1_CellMouseClick;
             //dataGridView1.MouseMove += DataGridView1_MouseMove;
             //dataGridView1.MouseLeave += DataGridView1_MouseLeave;
+
         }
 
 
@@ -119,6 +120,14 @@ namespace AtlantPrograma
 
         private void Form6_Load(object sender, EventArgs e)
         {
+            действияСКорзинойToolStripMenuItem.Enabled = false;
+            действияСпочтойToolStripMenuItem.Enabled = true;
+            поместитьВКорзинуToolStripMenuItem.Enabled = true;
+            пометитьКакПрочитанноеToolStripMenuItem1.Enabled = true;
+            отправитьВсемToolStripMenuItem1.Enabled = true;
+            действияСЧерновикамиToolStripMenuItem.Enabled = false;
+            переслатьСообщенияToolStripMenuItem.Enabled = true;
+            восстановитьПрочитанноеToolStripMenuItem.Enabled = false;
 
             autoScrollTimer.Interval = 100; // чем меньше — тем быстрее прокрутка
             autoScrollTimer.Tick += AutoScrollTimer_Tick;
@@ -159,12 +168,12 @@ namespace AtlantPrograma
 
             ShowNotificationCount(); // загрузка уведомлений
             //dataGridView1.MouseDown += dataGridView1_MouseDown;
-            действияСКорзинойToolStripMenuItem.Enabled = false;
-            пометитьКакПрочитанноеToolStripMenuItem1.Enabled = false;
-            поместитьВКорзинуToolStripMenuItem.Enabled = false;
-            действияСЧерновикамиToolStripMenuItem.Enabled = false;
-            переслатьСообщенияToolStripMenuItem.Enabled = false;
-            восстановитьПрочитанноеToolStripMenuItem.Enabled = false;
+            //действияСКорзинойToolStripMenuItem.Enabled = false;
+            //пометитьКакПрочитанноеToolStripMenuItem1.Enabled = false;
+            //поместитьВКорзинуToolStripMenuItem.Enabled = false;
+            //действияСЧерновикамиToolStripMenuItem.Enabled = false;
+            //переслатьСообщенияToolStripMenuItem.Enabled = false;
+            //восстановитьПрочитанноеToolStripMenuItem.Enabled = false;
         }
         private void button4_Click(object sender, EventArgs e)
         {
@@ -1398,8 +1407,8 @@ ORDER BY d.date_created DESC, d.time_created DESC;";
 
         private void DataGridView1_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
-            //var result = ShowMessageActionDialog();
-            if (e.Button == MouseButtons.Left && e.RowIndex >= 0)
+
+            if (e.Button == MouseButtons.Left && e.RowIndex >= 0 && e.ColumnIndex == -1)
             {
                 // Только если отображаются входящие или прочитанные
                 if (currentViewMode == ViewMode.Incoming)
@@ -1408,15 +1417,10 @@ ORDER BY d.date_created DESC, d.time_created DESC;";
 
                     if (result == DialogResult.Yes)
                     {
-                        // Вставь сюда свой метод "прочитать сообщение"
-                        // OpenMessage(e.RowIndex);
                         прочитатьToolStripMenuItem_Click(null, null);
-
                     }
                     else if (result == DialogResult.No)
                     {
-                        // Вставь сюда свой метод "ответить на сообщение"
-                        // ReplyToMessage(e.RowIndex); 
                         ответитьToolStripMenuItem_Click(null, null);
                     }
                 }
@@ -1426,41 +1430,77 @@ ORDER BY d.date_created DESC, d.time_created DESC;";
 
                     if (result == DialogResult.Yes)
                     {
-                        // Вставь сюда свой метод "прочитать сообщение"
-                        // OpenMessage(e.RowIndex);
                         прочитатьToolStripMenuItem1_Click(null, null);
-
                     }
                     else if (result == DialogResult.No)
                     {
-                        // Вставь сюда свой метод "ответить на сообщение"
-                        // ReplyToMessage(e.RowIndex); 
                         ответитьToolStripMenuItem1_Click(null, null);
                     }
                 }
-                //else if (currentViewMode == ViewMode.Drafts)
-                //{
-                //    // Открытие черновика без диалога
-                //    // OpenDraftByIndex(e.RowIndex);
-                //    //dataGridView1_CellContentClick_1(null);
-                //    // Получаем ID черновика
-                //    int draftId = 0;
-                //    if (dataGridView1.Rows[e.RowIndex].Cells["draft_id"].Value != null)
-                //    {
-                //        draftId = (int)dataGridView1.Rows[e.RowIndex].Cells["draft_id"].Value;
-                //    }
-
-                //    // Открываем Form7 и передаем только ID
-                //    Form7 form7 = new Form7(currentUser);
-                //    form7.LoadDraftForEditing(draftId);
-                //    form7.Show();
-                //}
-                //else
-                //{
-
-                //}
             }
-            //currentViewMode=ViewMode.None;
+            ////var result = ShowMessageActionDialog();
+            //if (e.Button == MouseButtons.Left && e.RowIndex >= 0)
+            //{
+            //    // Только если отображаются входящие или прочитанные
+            //    if (currentViewMode == ViewMode.Incoming)
+            //    {
+            //        var result = ShowMessageActionDialog();
+
+            //        if (result == DialogResult.Yes)
+            //        {
+            //            // Вставь сюда свой метод "прочитать сообщение"
+            //            // OpenMessage(e.RowIndex);
+            //            прочитатьToolStripMenuItem_Click(null, null);
+
+            //        }
+            //        else if (result == DialogResult.No)
+            //        {
+            //            // Вставь сюда свой метод "ответить на сообщение"
+            //            // ReplyToMessage(e.RowIndex); 
+            //            ответитьToolStripMenuItem_Click(null, null);
+            //        }
+            //    }
+            //    else if (currentViewMode == ViewMode.Read)
+            //    {
+            //        var result = ShowMessageActionDialog();
+
+            //        if (result == DialogResult.Yes)
+            //        {
+            //            // Вставь сюда свой метод "прочитать сообщение"
+            //            // OpenMessage(e.RowIndex);
+            //            прочитатьToolStripMenuItem1_Click(null, null);
+
+            //        }
+            //        else if (result == DialogResult.No)
+            //        {
+            //            // Вставь сюда свой метод "ответить на сообщение"
+            //            // ReplyToMessage(e.RowIndex); 
+            //            ответитьToolStripMenuItem1_Click(null, null);
+            //        }
+            //    }
+            //    //else if (currentViewMode == ViewMode.Drafts)
+            //    //{
+            //    //    // Открытие черновика без диалога
+            //    //    // OpenDraftByIndex(e.RowIndex);
+            //    //    //dataGridView1_CellContentClick_1(null);
+            //    //    // Получаем ID черновика
+            //    //    int draftId = 0;
+            //    //    if (dataGridView1.Rows[e.RowIndex].Cells["draft_id"].Value != null)
+            //    //    {
+            //    //        draftId = (int)dataGridView1.Rows[e.RowIndex].Cells["draft_id"].Value;
+            //    //    }
+
+            //    //    // Открываем Form7 и передаем только ID
+            //    //    Form7 form7 = new Form7(currentUser);
+            //    //    form7.LoadDraftForEditing(draftId);
+            //    //    form7.Show();
+            //    //}
+            //    //else
+            //    //{
+
+            //    //}
+            //}
+            ////currentViewMode=ViewMode.None;
         }
 
         Timer autoScrollTimer = new Timer();

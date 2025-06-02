@@ -21,6 +21,8 @@ namespace AtlantPrograma
         {
             InitializeComponent();
             currentUser = username;
+            //dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            //dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
             dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         }
 
@@ -45,7 +47,8 @@ namespace AtlantPrograma
             {
                 Name = "Select",
                 HeaderText = "",
-                Width = 30
+                Width = 30,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
             };
             dataGridView1.Columns.Insert(0, checkColumn);
 
@@ -834,7 +837,7 @@ namespace AtlantPrograma
 
             if (editedCount == 0)
             {
-                MessageBox.Show("Изменения не были внесены", "Изменение данных", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                //MessageBox.Show("Изменения не были внесены", "Изменение данных", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
