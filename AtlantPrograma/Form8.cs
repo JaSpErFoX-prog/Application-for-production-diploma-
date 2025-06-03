@@ -198,9 +198,9 @@ namespace AtlantPrograma
                 {
                     MessageBox.Show("Вы отметили, что необходимо подписать документы, но ни одного допустимого документа не добавлено.\n" +
                                     "Пожалуйста, прикрепите хотя бы один файл в формате .doc, .docx, .xls, .xlsx или .pdf",
-                                    "Предупреждение",
+                                    "Информация",
                                     MessageBoxButtons.OK,
-                                    MessageBoxIcon.Warning);
+                                    MessageBoxIcon.Information);
                     return;
                 }
             }
@@ -594,7 +594,7 @@ namespace AtlantPrograma
                     if (!allowedExtensions.Contains(extension))
                     {
                         MessageBox.Show("Файл \"" + Path.GetFileName(file) + "\" имеет недопустимый формат и не будет добавлен!",
-                            "Недопустимый формат", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            "Недопустимый формат", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         continue;
                     }
 
@@ -749,7 +749,7 @@ namespace AtlantPrograma
             {
                 if (listBox.CheckedItems.Count == 0)
                 {
-                    MessageBox.Show("Пожалуйста, выберите хотя бы один документ!", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Пожалуйста, выберите хотя бы один документ!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
@@ -1021,7 +1021,7 @@ namespace AtlantPrograma
                             Invoke(new Action(() =>
                             {
                                 MessageBox.Show($"Ошибка при обработке документа: {ex.Message}",
-                                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             }));
                         }
                     });
@@ -1119,7 +1119,7 @@ namespace AtlantPrograma
                 ResetToOriginalDocuments();
                 Task.Run(() => CleanOldTempDocuments());
 
-                MessageBox.Show("Изменения сброшены, документы восстановлены", "Готово",
+                MessageBox.Show("Изменения сброшены, документы восстановлены", "Успех",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
@@ -1133,7 +1133,7 @@ namespace AtlantPrograma
         private void ClearAllAttachedDocuments()
         {
             if (MessageBox.Show("Вы уверены, что хотите очистить все прикреплённые документы?",
-        "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+        "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 // Очистка списка файлов и визуальных элементов
                 attachedFiles.Clear();
@@ -1205,7 +1205,7 @@ namespace AtlantPrograma
             {
                 if (listBox.CheckedItems.Count == 0)
                 {
-                    MessageBox.Show("Пожалуйста, выберите хотя бы один документ!", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Пожалуйста, выберите хотя бы один документ!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
@@ -1443,7 +1443,7 @@ namespace AtlantPrograma
             {
                 if (listBox.CheckedItems.Count == 0)
                 {
-                    MessageBox.Show("Пожалуйста, выберите хотя бы один документ!", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Пожалуйста, выберите хотя бы один документ!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
@@ -1725,7 +1725,7 @@ namespace AtlantPrograma
                 }
                 else
                 {
-                    MessageBox.Show("Неподдерживаемый формат для вставки печати", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Неподдерживаемый формат для вставки печати", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return docData;
                 }
             }
@@ -1941,7 +1941,7 @@ namespace AtlantPrograma
                 file.fileData = modifiedBytes;
             }
 
-            MessageBox.Show("Печати успешно добавлены", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Печати успешно добавлены", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void checkBox1_CheckedChanged(object sender, EventArgs e)

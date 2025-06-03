@@ -92,28 +92,28 @@ namespace AtlantPrograma
             // Проверка на пустые поля
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(confirmPassword) || string.IsNullOrEmpty(department))
             {
-                MessageBox.Show("Заполните все поля!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Заполните все поля!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             // Проверка длины пароля
             if (password.Length > 20)
             {
-                MessageBox.Show("Пароль не должен превышать 20 символов!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Пароль не должен превышать 20 символов!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             // Проверка совпадения паролей
             if (password != confirmPassword)
             {
-                MessageBox.Show("Пароли не совпадают!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Пароли не совпадают!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             // Проверка на использование только английских символов
             if (!Regex.IsMatch(password, @"^[a-zA-Z0-9!@#$%^&*()_+=-]+$"))
             {
-                MessageBox.Show("Пароль должен содержать только английские буквы, цифры и символы!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Пароль должен содержать только английские буквы, цифры и символы!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -142,11 +142,11 @@ namespace AtlantPrograma
 
                         if (existingDepartment != department)
                         {
-                            MessageBox.Show("Пользователь с таким именем уже зарегистрирован в другом отделе. Регистрация одинакового пользователя с разными отделами невозможна!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            MessageBox.Show("Пользователь с таким именем уже зарегистрирован в другом отделе. Регистрация одинакового пользователя с разными отделами невозможна!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             return;
                         }
 
-                        MessageBox.Show("Такой пользователь уже существует!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show("Такой пользователь уже существует!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
 

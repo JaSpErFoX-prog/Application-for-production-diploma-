@@ -906,7 +906,7 @@ ORDER BY m.id DESC";
                 return;
             }
 
-            DialogResult result = MessageBox.Show($"Вы уверены, что хотите переместить {idsToDelete.Count} сообщение(я)(ий) в корзину? Продолжить?", "Предупреждение", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            DialogResult result = MessageBox.Show($"Вы уверены, что хотите переместить {idsToDelete.Count} сообщение(я)(ий) в корзину? Продолжить?", "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (result != DialogResult.Yes)
                 return;
 
@@ -965,7 +965,7 @@ ORDER BY m.id DESC";
             }
 
             // Запрашиваем подтверждение у пользователя
-            DialogResult result = MessageBox.Show($"Вы точно хотите пометить {idsToMarkRead.Count} сообщение(я)(ий) как прочитанные? Продолжить?", "Предупреждение", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            DialogResult result = MessageBox.Show($"Вы точно хотите пометить {idsToMarkRead.Count} сообщение(я)(ий) как прочитанные? Продолжить?", "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
             if (result != DialogResult.Yes)
                 return;
@@ -1022,7 +1022,7 @@ ORDER BY m.id DESC";
                 return;
             }
 
-            DialogResult result = MessageBox.Show($"Вы уверены, что хотите восстановить {idsToRestore.Count} помеченных сообщений?", "Предупреждение", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            DialogResult result = MessageBox.Show($"Вы уверены, что хотите восстановить {idsToRestore.Count} помеченных сообщений?", "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (result != DialogResult.Yes)
                 return;
 
@@ -1060,9 +1060,9 @@ ORDER BY m.id DESC";
             }
             DialogResult result = MessageBox.Show(
         "Вы уверены, что хотите восстановить все сообщения из корзины?",
-        "Предупреждение",
+        "Подтверждение",
         MessageBoxButtons.YesNo,
-        MessageBoxIcon.Warning);
+        MessageBoxIcon.Question);
 
             if (result != DialogResult.Yes)
                 return;
@@ -1118,7 +1118,7 @@ ORDER BY m.id DESC";
                     "Вы уверены, что хотите полностью очистить корзину?\nТакже вы можете отметить определённые сообщения для удаления",
                     "Подтверждение очистки корзины",
                     MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Warning);
+                    MessageBoxIcon.Question);
 
                 if (result != DialogResult.Yes)
                     return;
@@ -1129,7 +1129,7 @@ ORDER BY m.id DESC";
                     $"Вы уверены, что хотите удалить {idsToDelete.Count} сообщение(я)(ий) из корзины? Продолжить?",
                     "Подтверждение удаления",
                     MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Warning);
+                    MessageBoxIcon.Question);
 
                 if (result != DialogResult.Yes)
                     return;
@@ -1648,7 +1648,7 @@ ORDER BY d.date_created DESC, d.time_created DESC;";
                     {
                         if (!reader.HasRows)
                         {
-                            MessageBox.Show("У вас нет неотправленных черновиков", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            //MessageBox.Show("У вас нет неотправленных черновиков", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             return;
                         }
 
@@ -1785,7 +1785,7 @@ ORDER BY d.date_created DESC, d.time_created DESC;";
                             $"Вы уверены, что хотите удалить {selectedDraftIds.Count} черновик(а)(ов)?",
                             "Подтверждение удаления",
                             MessageBoxButtons.YesNo,
-                            MessageBoxIcon.Warning);
+                            MessageBoxIcon.Question);
 
                         if (confirm == DialogResult.Yes)
                         {
@@ -1983,7 +1983,7 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
             string currentUserLogin = currentUser;
             if (selectedRecipient == currentUserLogin)
             {
-                MessageBox.Show("Нельзя пересылать сообщения самому себе", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Нельзя пересылать сообщения самому себе", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -1996,7 +1996,7 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
 
             if (result != DialogResult.Yes)
             {
-                MessageBox.Show("Пересылка отменена пользователем", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                //MessageBox.Show("Пересылка отменена пользователем", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -2464,7 +2464,7 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
             // Проверка на пустое значение в поле ввода
             if (string.IsNullOrEmpty(searchText))
             {
-                MessageBox.Show("Пожалуйста, введите имя пользователя для поиска!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Пожалуйста, введите имя пользователя для поиска", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 

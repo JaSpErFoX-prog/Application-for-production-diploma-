@@ -35,21 +35,21 @@ namespace AtlantPrograma
             // Проверка на пустые поля
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(newPassword) || string.IsNullOrEmpty(confirmPassword))
             {
-                MessageBox.Show("Заполните все поля!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Заполните все поля!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             // Проверка совпадения пароля и подтверждения пароля
             if (newPassword != confirmPassword)
             {
-                MessageBox.Show("Пароли не совпадают!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Пароли не совпадают!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             // Проверка допустимых символов
             if (!Regex.IsMatch(newPassword, @"^[a-zA-Z0-9!@#$%^&*()_+=\[{\]};:'"",<.>/?`~\\|-]+$"))
             {
-                MessageBox.Show("Пароль должен содержать только английские буквы, цифры и допустимые символы!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Пароль должен содержать только английские буквы, цифры и допустимые символы!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -68,7 +68,7 @@ namespace AtlantPrograma
 
                     if (userExists == 0)
                     {
-                        MessageBox.Show("Пользователь не найден!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show("Пользователь не найден!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
 

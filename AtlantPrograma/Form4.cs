@@ -201,7 +201,7 @@ namespace AtlantPrograma
                 $"Вы выбрали {count} пользователь(я)(ей) для удаления.\nПродолжить?",
                 "Подтверждение удаления",
                 MessageBoxButtons.YesNo,
-                MessageBoxIcon.Warning);
+                MessageBoxIcon.Question);
 
             if (confirmation == DialogResult.Yes)
             {
@@ -623,7 +623,7 @@ namespace AtlantPrograma
 
                 if (!availableDepartments.Any())
                 {
-                    MessageBox.Show("Нет доступных отделов из выбранных.", "Фильтрация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("Нет доступных отделов из выбранных", "Фильтрация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     continue;
                 }
 
@@ -804,7 +804,7 @@ namespace AtlantPrograma
 
                         if (username == currentUser)
                         {
-                            MessageBox.Show("Нельзя изменить данные текущего пользователя", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            MessageBox.Show("Нельзя изменить данные текущего пользователя", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             continue;
                         }
 
@@ -841,7 +841,7 @@ namespace AtlantPrograma
             }
             else
             {
-                MessageBox.Show($"Данные успешно обновлены для {editedCount} пользователь(ей)!", "Готово", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"Данные успешно обновлены для {editedCount} пользователь(ей)!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
 
             LoadUsers(); // Обновить таблицу
@@ -948,7 +948,7 @@ namespace AtlantPrograma
                 if (!string.IsNullOrEmpty(newPhone) &&
                     !Regex.IsMatch(newPhone, @"^\d-\d{2}(, \d-\d{2})*$"))
                 {
-                    MessageBox.Show("Номер телефона должен быть в формате 4-20 или 4-20, 9-10", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Номер телефона должен быть в формате 4-20 или 4-20, 9-10", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     continue;
                 }
 
