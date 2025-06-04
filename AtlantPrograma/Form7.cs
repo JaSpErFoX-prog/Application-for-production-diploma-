@@ -249,8 +249,9 @@ namespace AtlantPrograma
 
                         MessageBox.Show("Черновик сохранён успешно!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         // Найдём открытую форму Form6 и вызовем у неё метод
-                        //Form6 form6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+                        Form6 formm6 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
                         //form6?.LoadDraftMessages();
+                        formm6.UpdateMessageCounters();
                         Task.Run(() => CleanOldTempDocuments());
                         this.Close();
                     }
@@ -312,6 +313,8 @@ namespace AtlantPrograma
                                 }
                             }
                         }
+                        Form6 form66 = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+                        form66.UpdateMessageCounters();
                         this.Close(); // ← Закрываем форму только один раз здесь!
                     }
                     else if (saveDraft == DialogResult.No)

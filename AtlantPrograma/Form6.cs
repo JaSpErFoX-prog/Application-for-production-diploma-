@@ -1976,7 +1976,7 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
             string selectedRecipient = ShowRecipientSelectDialog(users, currentUser);
             if (string.IsNullOrEmpty(selectedRecipient))
             {
-                MessageBox.Show("Получатель не выбран. Пересылка отменена", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                //MessageBox.Show("Получатель не выбран. Пересылка отменена", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -2470,21 +2470,44 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
 
             bool userFound = false;
 
-            // Проходим по всем строкам и ищем имя в столбце "Отправитель"
-            foreach (DataGridViewRow row in dataGridView1.Rows)
+            string targetColumn = "";
+
+            if (dataGridView1.Columns.Contains("sender"))
+                targetColumn = "sender";
+            else if (dataGridView1.Columns.Contains("recipient"))
+                targetColumn = "recipient";
+
+            if (!string.IsNullOrEmpty(targetColumn))
             {
-                if (row.Cells["sender"].Value != null && row.Cells["sender"].Value.ToString().Equals(searchText, StringComparison.OrdinalIgnoreCase))
+                foreach (DataGridViewRow row in dataGridView1.Rows)
                 {
-                    // Пользователь найден, выделяем ячейки в столбце "Отправитель"
-                    row.Cells["sender"].Style.BackColor = Color.Yellow;
-                    userFound = true;
-                }
-                else
-                {
-                    // Если строка не содержит имя пользователя, сбрасываем выделение
-                    row.Cells["sender"].Style.BackColor = Color.White;
+                    if (row.Cells[targetColumn].Value != null &&
+                        row.Cells[targetColumn].Value.ToString().Equals(searchText, StringComparison.OrdinalIgnoreCase))
+                    {
+                        row.Cells[targetColumn].Style.BackColor = Color.Yellow;
+                        userFound = true;
+                    }
+                    else
+                    {
+                        row.Cells[targetColumn].Style.BackColor = Color.White;
+                    }
                 }
             }
+            //// Проходим по всем строкам и ищем имя в столбце "Отправитель"
+            //foreach (DataGridViewRow row in dataGridView1.Rows)
+            //{
+            //    if (row.Cells["sender"].Value != null && row.Cells["sender"].Value.ToString().Equals(searchText, StringComparison.OrdinalIgnoreCase))
+            //    {
+            //        // Пользователь найден, выделяем ячейки в столбце "Отправитель"
+            //        row.Cells["sender"].Style.BackColor = Color.Yellow;
+            //        userFound = true;
+            //    }
+            //    else
+            //    {
+            //        // Если строка не содержит имя пользователя, сбрасываем выделение
+            //        row.Cells["sender"].Style.BackColor = Color.White;
+            //    }               
+            //}
 
             if (!userFound)
             {
@@ -2495,7 +2518,7 @@ WHERE sender = @sender AND (is_sent IS NULL OR is_sent = 0) AND is_deleted = 0
                 // Перемещаем на первую строку с найденным отправителем
                 foreach (DataGridViewRow row in dataGridView1.Rows)
                 {
-                    if (row.Cells["sender"].Style.BackColor == Color.Yellow)
+                    if (row.Cells[targetColumn].Style.BackColor == Color.Yellow)
                     {
                         dataGridView1.FirstDisplayedScrollingRowIndex = row.Index;
                         break;
