@@ -880,6 +880,7 @@ ORDER BY m.id DESC";
                 //{
                 //    MessageBox.Show("Нет отправленных сообщений", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 //}
+                UpdateMessageCounters();
             }
         }
 

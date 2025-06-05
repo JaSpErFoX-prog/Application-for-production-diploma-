@@ -842,11 +842,10 @@ namespace AtlantPrograma
                                 }
                             }
                             Task.Run(() => CleanOldTempDocuments());
-                            
+                        Form6 form6UpdateCount = Application.OpenForms.OfType<Form6>().FirstOrDefault();
+                        form6UpdateCount?.UpdateMessageCounters();               
                         }
 
-                        Form6 form6UpdateCount = Application.OpenForms.OfType<Form6>().FirstOrDefault();
-                        form6UpdateCount?.UpdateMessageCounters();
                         // Теперь вставляем все файлы с актуальными данными в базу
                         //foreach (var file in updatedFiles)
                         //{
