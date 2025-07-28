@@ -1,0 +1,132 @@
+USE document_system;
+
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(20) NOT NULL,
+    role ENUM('admin', 'user') NOT NULL
+);
+
+-- Добавление администратора по умолчанию
+INSERT INTO users (username, password, role) 
+VALUES ('admin', 'admin', 'admin')
+ON DUPLICATE KEY UPDATE username=username;
+
+ALTER TABLE users
+MODIFY COLUMN password VARCHAR(100) NOT NULL;
+
+CREATE TABLE departments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    phones VARCHAR(50)  -- Может быть NULL, если номера нет
+);
+
+INSERT INTO departments (name, phones) VALUES
+('БКРР', '6-29, 6-30'),
+('БТД', '3-96, 4-29'),
+('Дирекция', NULL),
+('Здравпункт', NULL),
+('ИП', NULL),
+('КО МП', '3-10, 3-25'),
+('КО ПП', '2-38, 2-41'),
+('КОПиТ', '2-17, 2-19'),
+('КуП', '3-30, 3-31'),
+('ЛП', NULL),
+('МО', '5-22, 5-40'),
+('ОБУ', NULL),
+('ОГК МП', NULL),
+('ОГК СП', '3-90, 3-76'),
+('ОГМ', '3-27, 3-62'),
+('ОГЭ', '4-04, 4-41'),
+('ОЗ', NULL),
+('ОИТ', '4-20'),
+('ООТиОС', NULL),
+('ОП', NULL),
+('ОПЭА', '2-76, 2-77'),
+('ОПЭБ', '2-91, 3-15'),
+('ОРСиБУ', '3-06, 3-40'),
+('ОСиД', '6-11, 5-50'),
+('ОСОТ', NULL),
+('ОТР МП', NULL),
+('ОТСЛ', '4-56, 6-71'),
+('Охрана', '2-14, 3-14'),
+('ПК', NULL),
+('Профком', '2-90, 2-93'),
+('ПЭДиДК', '6-84, 6-85'),
+('ПЭмП', NULL),
+('СП', NULL),
+('ТО СП', '3-70, 5-88'),
+('УДО', '2-74, 5-16'),
+('ФО', '2-82, 3-82');
+
+
+DROP TABLE IF EXISTS user_details;
+
+CREATE TABLE user_details (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    phone VARCHAR(50),  -- Поддерживает несколько номеров через запятую
+    department_id INT,  -- Ссылка на таблицу departments
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL  -- Если отдел удалён, то будет NULL
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender VARCHAR(50) NOT NULL,
+    recipient VARCHAR(50) NOT NULL,
+    subject VARCHAR(100),
+    body TEXT,
+    priority ENUM('Не срочно', 'Обычное сообщение', 'Срочно!') DEFAULT 'Обычное сообщение',
+    date_sent VARCHAR(10), -- формат "дд.мм.гггг"
+    time_sent TIME
+);
+ALTER TABLE messages ADD COLUMN is_read BOOLEAN DEFAULT FALSE;
+ALTER TABLE messages ADD COLUMN sender_department VARCHAR(100);
+ALTER TABLE messages ADD COLUMN sender_phone VARCHAR(50);
+ALTER TABLE messages ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE;
+ALTER TABLE messages ADD COLUMN is_draft BOOLEAN DEFAULT 0;
+ALTER TABLE messages ADD COLUMN is_sent BOOLEAN DEFAULT FALSE;
+
+
+
+CREATE TABLE IF NOT EXISTS drafts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender VARCHAR(50) NOT NULL,
+    recipient VARCHAR(50),
+    subject VARCHAR(100),
+    body TEXT,
+    priority ENUM('Не срочно', 'Обычное сообщение', 'Срочно!') DEFAULT 'Обычное сообщение',
+    date_created VARCHAR(10),
+    time_created TIME
+);
+ALTER TABLE drafts ADD COLUMN is_sent TINYINT(1) DEFAULT 0;
+ALTER TABLE drafts ADD COLUMN is_deleted TINYINT(1) DEFAULT 0;
+
+
+CREATE TABLE IF NOT EXISTS documents (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message_id INT,
+    filename VARCHAR(255),
+    filedata LONGBLOB,
+    filetype VARCHAR(10),
+    is_signed BOOLEAN DEFAULT FALSE,
+    is_draft BOOLEAN DEFAULT 0,
+    FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+);
+
+ALTER TABLE documents
+ADD COLUMN draft_id INT DEFAULT NULL,
+MODIFY COLUMN message_id INT DEFAULT NULL;
+
+SET SQL_SAFE_UPDATES = 0;
+
+
+UPDATE documents
+SET draft_id = NULL
+WHERE draft_id = 0;
+
+SET SQL_SAFE_UPDATES = 1;
+
+ALTER TABLE documents
+ADD CONSTRAINT fk_documents_draft_id FOREIGN KEY (draft_id) REFERENCES drafts(id) ON DELETE CASCADE;
